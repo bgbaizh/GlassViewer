@@ -241,7 +241,18 @@ void System::satom(Atom atom1) {
 //----------------------------------------------------
 // Neighbor methods
 //----------------------------------------------------
-
+double System::get_angle(int ti ,int tj,int tk){
+    vector<double> a, b;
+    double a_abs, b_abs, adotb, theta;
+    a = get_distance_vector(atoms[tj], atoms[ti]);
+    b = get_distance_vector(atoms[tk], atoms[ti]);
+    a_abs = pow((a[0] * a[0] + a[1] * a[1] + a[2] * a[2]), 0.5);
+    b_abs = pow((b[0] * b[0] + b[1] * b[1] + b[2] * b[2]), 0.5);
+    adotb = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    theta = acos(adotb / a_abs / b_abs);
+    return theta;
+    return a[0];
+}
 double System::get_abs_distance(int ti ,int tj,double &diffx ,double &diffy,double &diffz){
 
     double abs, ax, ay, az;
@@ -474,6 +485,24 @@ vector<double> System::get_pairdistances(){
             if(ti==tj) { continue; }
             d = get_abs_distance(ti,tj,diffx,diffy,diffz);
             res.emplace_back(d);
+
+        }
+    }
+    return res;
+}
+
+vector<double> System::get_pairangle(){
+
+    vector<double> res;
+    double d;
+    //double diffx,diffy,diffz;
+
+    for (int ti=0; ti<nop; ti++){
+        for (int tj=0; tj<atoms[ti].n_neighbors; tj++)
+            for (int tk=tj; tk<atoms[ti].n_neighbors; tk++){
+                if(tk==tj) { continue; }
+                d = get_angle(ti,atoms[ti].neighbors[tj],atoms[ti].neighbors[tk]);
+                res.emplace_back(d);
 
         }
     }

@@ -4,6 +4,7 @@
 """
 
 
+from math import dist
 import pyscal.traj_process as ptp
 from pyscal.formats.ase import convert_snap
 import pyscal.routines as routines
@@ -77,6 +78,8 @@ class System(pc.System):
     >>> sys = System()
     >>> sys.read_inputfile('atoms.dat')
     """
+    vol = 0
+    rho = 0
     def __init__(self):
 
         self.initialized = True
@@ -269,7 +272,7 @@ class System(pc.System):
         self.cset_atom(atom)
 
 
-    def calculate_rdf(self, histobins=100, histomin=0.0, histomax=None):
+    def calculate_pdf(self, histobins=100, histomin=0.0, histomax=None):
         """
         Calculate the radial distribution function.
 
@@ -286,7 +289,7 @@ class System(pc.System):
 
         Returns
         -------
-        rdf : array of ints
+        pdf : array of ints
             Radial distribution function
         r : array of floats
             radius in distance units
@@ -300,6 +303,7 @@ class System(pc.System):
         hist, bin_edges = np.histogram(distances, bins=histobins, range=(histomin, histomax))
         edgewidth = np.abs(bin_edges[1]-bin_edges[0])
         hist = hist.astype(float)
+        distri=hist/edgewidth*2 # 在cpp 的计数程序中，少算了一半
         r = bin_edges[:-1]
 
         #get box density
@@ -308,13 +312,59 @@ class System(pc.System):
         natoms = self.nop
         rho = natoms/vol
 
-        shell_vols = (4./3.)*np.pi*((r+edgewidth)**3 - r**3)
-        shell_rho = hist/shell_vols
+
         #now divide to get final value
-        rdf = shell_rho/rho*2/natoms
+        pdf = distri/(natoms*4*np.pi*r*r*rho)
 
-        return rdf, r
+        return pdf, r
+    def calculate_bad(self, histobins=100, histomin=None, histomax=None):
+        """
+        Calculate the bond angle distribution.
 
+        Parameters
+        ----------
+        histobins : int
+            number of bins in the histogram
+        histomin : float, optional
+            minimum value of the distance histogram. Default 0.0.
+
+        histomax : float, optional
+            maximum value of the distance histogram. Default, the maximum value
+            in all pair distances is used.
+
+        Returns
+        -------
+        pdf : array of ints
+            Radial distribution function
+        r : array of floats
+            radius in distance units
+
+        """
+        thetas = self.get_pairangle()
+
+        if histomax == None:
+            histomax = max(thetas)
+        if histomin == None:
+            histomin = min(thetas)
+
+        hist, bin_edges = np.histogram(thetas, bins=histobins, range=(histomin, histomax))
+        edgewidth = np.abs(bin_edges[1]-bin_edges[0])
+        hist = hist.astype(float)
+        distri=hist/edgewidth
+        theta = bin_edges[:-1]
+        Nisum=0
+        for i in self.atoms:
+            Ni=len(i.neighbors)
+            Nisum=Nisum+Ni*(Ni-1)
+
+
+        bad = distri/Nisum
+
+        return bad, theta
+    def get_rho_vol(self):
+        boxvecs = self.box
+        self.vol = np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2])
+        self.rho = self.natoms/self.vol
 
     def get_qvals(self, q, averaged = False):
         """
@@ -1459,7 +1509,7 @@ class System(pc.System):
         this to be possible, neighbors have to be found first using the :func:`~pyscal.core.System.find_neighbors`
         method. The selected neighbor method should include the second shell as well. For this
         purpose `method=cutoff` can be chosen with a cutoff long enough to include the second
-        shell. In order to estimate this cutoff, one can use the :func:`~pyscal.core.System.calculate_rdf`
+        shell. In order to estimate this cutoff, one can use the :func:`~pyscal.core.System.calculate_pdf`
         method.
 
         References
@@ -1568,7 +1618,7 @@ class System(pc.System):
         this to be possible, neighbors have to be found first using the :func:`~pyscal.core.System.find_neighbors`
         method. The selected neighbor method should include the second shell as well. For this
         purpose `method=cutoff` can be chosen with a cutoff long enough to include the second
-        shell. In order to estimate this cutoff, one can use the :func:`~pyscal.core.System.calculate_rdf`
+        shell. In order to estimate this cutoff, one can use the :func:`~pyscal.core.System.calculate_pdf`
         method.
 
         References

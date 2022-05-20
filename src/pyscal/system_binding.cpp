@@ -74,6 +74,8 @@ PYBIND11_MODULE(csystem, m) {
         .def("set_neighbordistance", &System::set_neighbordistance)
         .def("reset_allneighbors", &System::reset_all_neighbors)
         .def("get_pairdistances",&System::get_pairdistances)
+        .def("get_pairangle",&System::get_pairangle)
+        .def("get_angle",&System::get_angle)
         .def("store_neighbor_info",&System::store_neighbor_info)
         .def("cset_atom_cutoff",&System::set_atom_cutoff)
 
