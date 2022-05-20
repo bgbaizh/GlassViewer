@@ -311,7 +311,7 @@ class System(pc.System):
         shell_vols = (4./3.)*np.pi*((r+edgewidth)**3 - r**3)
         shell_rho = hist/shell_vols
         #now divide to get final value
-        rdf = shell_rho/rho
+        rdf = shell_rho/rho*2/natoms
 
         return rdf, r
 
