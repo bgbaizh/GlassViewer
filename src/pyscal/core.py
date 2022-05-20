@@ -19,6 +19,7 @@ import uuid
 import gzip
 import io
 import pyscal.visualization as pv
+from scipy.fftpack import fft,ifft
 
 #------------------------------------------------------------------------------------------------------------
 """
@@ -317,6 +318,14 @@ class System(pc.System):
         pdf = distri/(natoms*4*np.pi*r*r*rho)
 
         return pdf, r
+    def calculate_sf(self, pdf, r): #待验证 用其他程序作为benchmark
+        self.get_rho_vol()
+        T=r[2]-r[1]
+        N=len(r)
+        k=np.arange(N)
+        sf=(1+2*self.rho*T*N*np.imag(fft(r*(pdf-1)))/k)
+        q=2*np.pi*k/T/N
+        return sf,q
     def calculate_bad(self, histobins=100, histomin=None, histomax=None):
         """
         Calculate the bond angle distribution.
