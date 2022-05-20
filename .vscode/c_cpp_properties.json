@@ -4,7 +4,6 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:\\Users\\baizh\\pyscal\\lib",
                 "C:\\Users\\baizh\\anaconda3\\Lib\\site-packages\\pybind11\\include",
                 "C:\\Users\\baizh\\anaconda3\\include"
             ],
