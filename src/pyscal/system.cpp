@@ -474,19 +474,53 @@ void System::reset_main_neighbors(){
 }
 
 
-vector<double> System::get_pairdistances(){
+vector<double> System::get_pairdistances(double cut){
 
     vector<double> res;
     double d;
     double diffx,diffy,diffz;
+    int nnx,nny,nnz;
+    if(cut>0){
+        nnx=int(ceil(cut/boxx));
+        nny=int(ceil(cut/boxy));
+        nnz=int(ceil(cut/boxz));
+        for (int ti=0; ti<nop; ti++){
+            for (int tj=0; tj<nop; tj++){
+                if(ti==tj) { continue; }
 
-    for (int ti=0; ti<nop; ti++){
-        for (int tj=ti; tj<nop; tj++){
-            if(ti==tj) { continue; }
-            d = get_abs_distance(ti,tj,diffx,diffy,diffz);
-            res.emplace_back(d);
+                for(int i=-nnx;i<=nnx;i++){
+                             
+                    for(int j=-nny;j<=nny;j++){
+                        for(int k=-nnz;k<=nnz;k++){
+                            
+                         diffx = atoms[tj].posx+i*boxx - atoms[ti].posx;
+                         diffy = atoms[tj].posy+j*boxy - atoms[ti].posy;
+                         diffz = atoms[tj].posz+k*boxz - atoms[ti].posz;
+                         d = sqrt(diffx*diffx + diffy*diffy + diffz*diffz);
+                         if(d<=cut){
+                             res.emplace_back(d);
+                         }
+                             
+                        }
+                    }
+                }
 
+
+            }     
         }
+
+
+    }
+    if(cut==0)
+    {
+        for (int ti=0; ti<nop; ti++){
+            for (int tj=ti; tj<nop; tj++){
+                if(ti==tj) { continue; }
+                d = get_abs_distance(ti,tj,diffx,diffy,diffz);
+                res.emplace_back(d);
+
+            }
+     }
     }
     return res;
 }

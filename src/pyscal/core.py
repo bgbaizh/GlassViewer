@@ -273,7 +273,7 @@ class System(pc.System):
         self.cset_atom(atom)
 
 
-    def calculate_pdf(self, histobins=100, histomin=0.0, histomax=None):
+    def calculate_pdf(self, histobins=100, histomin=0.0, histomax=None,cut=0):
         """
         Calculate the radial distribution function.
 
@@ -296,7 +296,7 @@ class System(pc.System):
             radius in distance units
 
         """
-        distances = self.get_pairdistances()
+        distances = self.get_pairdistances(cut)
 
         if histomax == None:
             histomax = max(distances)
@@ -304,7 +304,11 @@ class System(pc.System):
         hist, bin_edges = np.histogram(distances, bins=histobins, range=(histomin, histomax))
         edgewidth = np.abs(bin_edges[1]-bin_edges[0])
         hist = hist.astype(float)
-        distri=hist/edgewidth*2 # 在cpp 的计数程序中，少算了一半
+        if cut==0:
+            distri=hist/edgewidth*2 # 在cpp 的计数程序中,如果cut=0，则少算了一半
+        else:
+            distri=hist/edgewidth
+            
         r = bin_edges[:-1]
 
         #get box density
@@ -316,16 +320,34 @@ class System(pc.System):
 
         #now divide to get final value
         pdf = distri/(natoms*4*np.pi*r*r*rho)
-
+        pdf=np.nan_to_num(pdf)
         return pdf, r
-    def calculate_sf(self, pdf, r): #待验证 用其他程序作为benchmark
-        self.get_rho_vol()
-        T=r[2]-r[1]
-        N=len(r)
-        k=np.arange(N)
-        sf=(1+2*self.rho*T*N*np.imag(fft(r*(pdf-1)))/k)
-        q=2*np.pi*k/T/N
+    def calculate_sf(self, pdf, r,precise): #precise=0 采用fft precise>0 在fft 的基础上更加细分q值，采用积分的方式，后者验证前者
+
+        if(precise==0):
+            self.get_rho_vol()
+            N=len(r)
+            T=N*(r[2]-r[1])
+            
+            k=np.arange(N)
+            sf=(1-2*self.rho*T*T/N*np.imag(fft(r*(pdf-1)))/k)
+            q=2*np.pi*k/T
+        else:  
+            pdf=np.nan_to_num(np.array(pdf).reshape(len(pdf),1))
+            r=np.array(r).reshape(len(r),1)
+            self.get_rho_vol()
+            N=len(r)
+            dr=(r[2]-r[1])
+            T=N*dr
+            k=np.arange(N*precise)
+            k=np.array(k).reshape(len(k),1)
+            q=2*np.pi*k/T/precise
+            #sf=(1-2*self.rho*T*T/N*np.imag(fft(r*(pdf-1)))/k)
+            sf=1+4*np.pi*self.rho/q*(np.sin(q.dot(r.T)).dot(r*(pdf-1))*dr)
+            sf=sf
+            q=q
         return sf,q
+    
     def calculate_bad(self, histobins=100, histomin=None, histomax=None):
         """
         Calculate the bond angle distribution.
