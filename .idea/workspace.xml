@@ -5,15 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43a52be0-6938-40cb-8486-d469ac0e7f21" name="变更" comment="">
-      <change afterPath="$PROJECT_DIR$/README.rst" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/pyscal.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/pyscal.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/glassviewer/glassviewer.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/glassviewer/glassviewer.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/glassviewer/import pyscal as pc.py" beforeDir="false" afterPath="$PROJECT_DIR$/glassviewer/import pyscal as pc.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pyscal/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/pyscal/core.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pyscal/system.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/pyscal/system.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pyscal/system.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/pyscal/system.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pyscal/system_binding.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/pyscal/system_binding.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,20 +36,20 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "C:/Users/baizh/pyscal",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "settings.editor.selected.configurable": "configurable.group.tools"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/baizh/pyscal&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;configurable.group.tools&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration default="true" type="PythonConfigurationType" factoryName="Python">
       <module name="pyscal" />
@@ -118,6 +112,8 @@
       <workItem from="1653023509188" duration="17000" />
       <workItem from="1653064169199" duration="878000" />
       <workItem from="1653065101017" duration="3188000" />
+      <workItem from="1653206170901" duration="4231000" />
+      <workItem from="1653278630791" duration="85000" />
     </task>
     <servers />
   </component>

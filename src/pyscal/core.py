@@ -1605,7 +1605,7 @@ class System(pc.System):
                     count += 1
             return vec/float(count)
             
-    def calculate_pmsro(self, reference_type=1, compare_type=2, average=True, shells=2, delta=True):
+    def calculate_pmsro(self, reference_type=1, compare_type=2, average=True, shells=1, delta=False):
         """
         Calculate pairwise multicomponent short range order
 
@@ -1720,6 +1720,102 @@ class System(pc.System):
                     vec += np.array(atom.sro)
                     count += 1
             return vec/float(count)
+    def calculate_pmsro_CS(self, reference_type=1, compare_type=2, normalization=False):
+        """
+        Calculate Cargill-Spaepen type pairwise multicomponent short range order
+
+        Parameters
+        ----------
+        reference_type: int, optional
+            type of the atom to be used a reference. default 1
+        
+        compare_type: int, optional
+            type of the atom to be used to compare. default 2
+        normalization:
+            True or False, whether or not use //eta_AB^max to normalize the SRO, (only works for CargillSpaepen)
+        
+
+        Returns
+        -------
+        vec: list of float
+            The short range order averaged over the whole system for atom of
+            the reference type. Only returned if `average` is True. First value is SRO
+            of the first neighbor shell and the second value corresponds to the second
+            nearest neighbor shell.
+
+        Notes(****wait to modify)
+        -----
+        Calculates the pairwise multicomponent short range order for a higher-dimensional systems alloy using the approach by
+        Fontaine [1]. Pairwise multicomponent short range order is calculated as,
+
+        .. math::
+
+            \\alpha_ij = \\frac{n_j/mA - c_j}{\\delta_{ij} - c_j} 
+            
+        where i refers to reference type. n_j is the number of atoms of the non reference type among the c_j atoms
+        in the ith shell. m_A is the concentration of the non reference atom.  \\delta_{ij}" = 1 if i = j. Please
+        note that the value is calculated for shells 1 and 2 by default. In order for
+        this to be possible, neighbors have to be found first using the :func:`~pyscal.core.System.find_neighbors`
+        method. The selected neighbor method should include the second shell as well. For this
+        purpose `method=cutoff` can be chosen with a cutoff long enough to include the second
+        shell. In order to estimate this cutoff, one can use the :func:`~pyscal.core.System.calculate_pdf`
+        method.
+
+        References
+        ----------
+        .. [1] de Fountaine D., J. Appl. Cryst. 4(15), 1971.
+
+        """
+        if not self.neighbors_found:
+            raise RuntimeError("Neighbors not found, please find neighbors using the cutoff method")
+
+        atoms = self.get_all_atoms()
+        
+        typelist = [atom.type for atom in self.iter_atoms()]
+        types = np.unique(typelist, return_counts=True)
+        
+        if not reference_type in types[0]:
+            raise ValueError("reference atom type is invalid")
+            
+        if not compare_type in types[0]:
+            raise ValueError("Compare atom type is invalid")
+        #A means reference atom type , B means compare atom type
+        XA  = types[1][reference_type-1]/float(np.sum(types[1]))
+        XB = types[1][compare_type-1]/float(np.sum(types[1]))
+        # Calculate ZB
+        ZB=0
+        count =0
+        for atom in atoms:
+            if  atom.type == compare_type:
+                ZB+= len(atom.neighbors)
+                count += 1
+        ZB=float(ZB)/float(count)
+        #calculate ZA
+        ZA=0
+        ZAB=0
+        count =0
+        for atom in atoms:
+            if atom.type == reference_type:
+                neighs = atom.neighbors
+                ZA+=len( neighs)
+                ZAB+= np.sum([1 for n in neighs if atoms[n].type == compare_type])
+                count += 1
+        ZA=float(ZA)/float(count)
+        ZAB=float(ZAB)/float(count)
+        #calculate other quantities
+        Z=XA*ZA+XB*ZB
+        ZstarAB=XB*ZA*ZB/Z
+        etaAB=(ZAB/ZstarAB)-1
+        etaAB_MAX=XB*ZB/(XA*ZA)
+        etaAB_normalized=etaAB/etaAB_MAX
+        
+        #add atoms
+        self.atoms = atoms
+        if normalization==0:
+            return etaAB
+        elif normalization==1:
+            return etaAB_normalized
+
 
     def get_custom(self, atom, customkeys):
         """
