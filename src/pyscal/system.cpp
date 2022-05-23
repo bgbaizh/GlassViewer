@@ -30,7 +30,7 @@ System::System(){
     comparecriteria = 0;
     
     neighbordistance = 0;
-
+    pdf_halftimes=0;
     //set box with zeros
     for(int i=0; i<3; i++){
         for(int j=0; j<3; j++){
@@ -254,7 +254,11 @@ double System::get_angle(int ti ,int tj,int tk){
     return a[0];
 }
 double System::get_abs_distance(int ti ,int tj,double &diffx ,double &diffy,double &diffz){
-
+    //这东西算triclinic 的最短距离是有问题的，有的点即使在八分之一胞内，又可能距离不是最近的，可能平移之后更近
+    //这个函数主要用在两个地方，一个是搜neighbor，一个是算pdf
+    //考虑在他在py读取文件的时候给扩胞了，如果扩的胞与所计算的长度范围相比足够大，则在计算neighbor 的时候不会出现问题
+    //但是在计算pdf 的时候，关于triclinic距离计算不准的问题无论如何都会产生的。
+    //因此在计算pdf的时候如果晶胞是三斜的，则我将包含此函数的算法禁用。
     double abs, ax, ay, az;
     diffx = atoms[tj].posx - atoms[ti].posx;
     diffy = atoms[tj].posy - atoms[ti].posy;
@@ -474,43 +478,106 @@ void System::reset_main_neighbors(){
 }
 
 
-vector<double> System::get_pairdistances(double cut){
+vector<double> System::get_pairdistances(double cut,bool partial,int centertype,int secondtype){
+/*  这东西原来的cut=0的的算法（即原算法，已经被我注释掉了）是有问题的。
+1， get_abs_distance的计算算法对三斜晶胞是有问题的。因此我对于三斜晶胞
+    我将此算法禁用，采用我的扩胞的方式虽然增加计算量但是解决这个问题
+2， 对于方晶胞，这个算法只适用于cutoff作为半径的内切球比晶胞的内切球小的
+    情况，如果cutoff比内切球大的时候，则一个晶胞内的原子不足以无法填充
+    cutoff球，必须采用我的扩胞方法。
+3， 为了加速，对于方晶胞，2cutoff小于boxx boxy boxz 中某一个时候，我在
+    这个方向不扩胞，利用原胞的周期性原子映射进行计算（利用get_abs_distance）。
+    对于三斜，我都会扩至少一倍以上的胞(避免使用get_abs_distance)
+
+*/
 
     vector<double> res;
-    double d;
+    double d_square;
     double diffx,diffy,diffz;
     int nnx,nny,nnz;
-    if(cut>0){
+    double Height[3]={0};
+    double iCrossj[3][3]={0};
+    double iCrossjnorm[3]={0};
+    double kdotiCrossj[3]={0};
+    int index[3][3]={0,1,2,1,2,0,2,0,1};// 计算叉乘的时候，以角标k i j 为顺序 按照index数组的顺序进行计算
+    double cut_square=cut*cut;
+    bool halftimes=false;
+    if(triclinic==1)
+    {
+        for(auto &m:index)
+        {
+            int k= m[0];
+            int i =m[1];
+            int j =m[2];
+            for(auto &m2:index)
+            {
+                int k2= m2[0];
+                int i2 =m2[1];
+                int j2 =m2[2];
+                iCrossj[k][k2]=box[i][i2]*box[j][j2]-box[i][j2]*box[j][i2];
+            }
+        }
+        
+        for(int i=0;i<3;i++)
+        {
+            for(int j=0;j<3;j++)
+            {
+            iCrossjnorm[i]+= iCrossj[i][j]*iCrossj[i][j];
+            kdotiCrossj[i]+=box[i][j]*iCrossj[i][j];
+            }
+            iCrossjnorm[i]=pow(iCrossjnorm[i],0.5);
+            Height[i]=abs(kdotiCrossj[i]/iCrossjnorm[i]);
+        }
+        nnx=int(ceil(cut/Height[0]));
+        nny=int(ceil(cut/Height[1]));
+        nnz=int(ceil(cut/Height[2]));
+    }
+    else if(triclinic==0)
+    {
         nnx=int(ceil(cut/boxx));
         nny=int(ceil(cut/boxy));
         nnz=int(ceil(cut/boxz));
-        for (int ti=0; ti<nop; ti++){
-            for (int tj=0; tj<nop; tj++){
-                if(ti==tj) { continue; }
+        if(cut/boxx<0.5){nnx=0;}  //对于方晶胞足够小的cutoff，不扩胞从而加速
+        if(cut/boxy<0.5){nny=0;}  
+        if(cut/boxz<0.5){nnz=0;}  
+    }
 
-                for(int i=-nnx;i<=nnx;i++){
-                             
-                    for(int j=-nny;j<=nny;j++){
-                        for(int k=-nnz;k<=nnz;k++){
+    if(triclinic==0 && nnx==0 && nny==0 && nnz==0){halftimes=true;}
+    for (int ti=0; ti<nop; ti++){
+        int inittj=0;
+        if(partial==true && atoms[ti].type!=centertype) { continue; }
+        if(halftimes=true){inittj=ti+1;}
+        for (int tj=inittj; tj<nop; tj++){
+            if(partial==true && atoms[tj].type!=secondtype) { continue; }
+            if(ti==tj) { continue; }
+
+            for(int i=-nnx;i<=nnx;i++){
                             
-                         diffx = atoms[tj].posx+i*boxx - atoms[ti].posx;
-                         diffy = atoms[tj].posy+j*boxy - atoms[ti].posy;
-                         diffz = atoms[tj].posz+k*boxz - atoms[ti].posz;
-                         d = sqrt(diffx*diffx + diffy*diffy + diffz*diffz);
-                         if(d<=cut){
-                             res.emplace_back(d);
-                         }
-                             
+                for(int j=-nny;j<=nny;j++){
+                    for(int k=-nnz;k<=nnz;k++){
+                        if(triclinic ==0){
+                            get_abs_distance(ti,tj,diffx,diffy,diffz);
+                            diffx += i*boxx ;
+                            diffy += j*boxy ;
+                            diffz += k*boxz ;
                         }
+                        else if (triclinic==1){
+                            diffx = atoms[tj].posx+i*box[0][0]+j*box[1][0]+k*box[2][0] - atoms[ti].posx;
+                            diffy = atoms[tj].posy+i*box[0][1]+j*box[1][1]+k*box[2][1] - atoms[ti].posy;
+                            diffz = atoms[tj].posz+i*box[0][2]+j*box[1][2]+k*box[2][2] - atoms[ti].posz;
+                        }
+                        d_square = diffx*diffx + diffy*diffy + diffz*diffz;
+                        if(d_square<=cut_square){
+                            res.emplace_back(pow(d_square,0.5));
+                        }   
                     }
                 }
-
-
-            }     
-        }
-
-
+            }
+        }     
     }
+
+
+    /*
     if(cut==0)
     {
         for (int ti=0; ti<nop; ti++){
@@ -520,8 +587,10 @@ vector<double> System::get_pairdistances(double cut){
                 res.emplace_back(d);
 
             }
-     }
+        }
     }
+    */
+    pdf_halftimes=halftimes;
     return res;
 }
 

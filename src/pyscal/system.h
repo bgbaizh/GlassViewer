@@ -43,7 +43,7 @@ class System{
         double rot[3][3];
         double rotinv[3][3];
         int triclinic;
-        double boxx, boxy, boxz;
+        double boxx, boxy, boxz;//the length of the 3 egdes
         double boxdims[3][2];
         double box[3][3];
         void assign_triclinic_params(vector<vector<double>>, vector<vector<double>>);
@@ -88,7 +88,8 @@ class System{
         double get_abs_distance(Atom , Atom );
         vector<double> get_distance_vector(Atom , Atom);
         void set_neighbordistance(double);
-        vector<double> get_pairdistances(double cut);
+        vector<double> get_pairdistances(double cut,bool partial,int centertype,int secondtype);
+        bool pdf_halftimes;
         vector<double> get_pairangle();
         double get_angle(int,int,int);
         //variables for a filter

@@ -115,6 +115,7 @@ class System(pc.System):
         Box setter 
         """
         #we should automatically check for triclinic cells here
+        # _box 是C++库内置的box， box 是py封装的一个方法属性， 目的是当有actual box  的时候返回actual box， actual box是当扩胞后记录的原来的box， _box 在扩胞后则变大
         summ = 0
         for i in range(3):
             box1 = np.array(userbox[i-1])
@@ -273,8 +274,9 @@ class System(pc.System):
         self.cset_atom(atom)
 
 
-    def calculate_pdf(self, histobins=100, histomin=0.0, histomax=None,cut=0):
+    def calculate_pdf(self, histobins=100, histomin=0.0, histomax=None,cut=10, partial=False, centertype=1, secondtype=2):
         """
+        对于方晶胞，且cut小于box三个边的0.5倍，经过反复优化，速度很快。
         Calculate the radial distribution function.
 
         Parameters
@@ -296,7 +298,9 @@ class System(pc.System):
             radius in distance units
 
         """
-        distances = self.get_pairdistances(cut)
+        if cut <=0:
+            raise ValueError("value of cut should be positive")
+        distances = self.get_pairdistances(cut,partial,centertype,secondtype)
 
         if histomax == None:
             histomax = max(distances)
@@ -304,8 +308,8 @@ class System(pc.System):
         hist, bin_edges = np.histogram(distances, bins=histobins, range=(histomin, histomax))
         edgewidth = np.abs(bin_edges[1]-bin_edges[0])
         hist = hist.astype(float)
-        if cut==0:
-            distri=hist/edgewidth*2 # 在cpp 的计数程序中,如果cut=0，则少算了一半
+        if self.pdf_halftimes==1:
+            distri=hist/edgewidth*2 # 未扩胞进行半数优化
         else:
             distri=hist/edgewidth
             
@@ -313,12 +317,13 @@ class System(pc.System):
 
         #get box density
         boxvecs = self.box
-        vol = np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2])
+        vol = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
         natoms = self.nop
         rho = natoms/vol
 
 
         #now divide to get final value
+        np.seterr(divide='ignore',invalid='ignore')
         pdf = distri/(natoms*4*np.pi*r*r*rho)
         pdf=np.nan_to_num(pdf)
         return pdf, r
@@ -330,6 +335,7 @@ class System(pc.System):
             T=N*(r[2]-r[1])
             
             k=np.arange(N)
+            np.seterr(divide='ignore',invalid='ignore')
             sf=(1-2*self.rho*T*T/N*np.imag(fft(r*(pdf-1)))/k)
             q=2*np.pi*k/T
         else:  
@@ -343,6 +349,7 @@ class System(pc.System):
             k=np.array(k).reshape(len(k),1)
             q=2*np.pi*k/T/precise
             #sf=(1-2*self.rho*T*T/N*np.imag(fft(r*(pdf-1)))/k)
+            np.seterr(divide='ignore',invalid='ignore')
             sf=1+4*np.pi*self.rho/q*(np.sin(q.dot(r.T)).dot(r*(pdf-1))*dr)
             sf=sf
             q=q
@@ -394,7 +401,7 @@ class System(pc.System):
         return bad, theta
     def get_rho_vol(self):
         boxvecs = self.box
-        self.vol = np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2])
+        self.vol = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
         self.rho = self.natoms/self.vol
 
     def get_qvals(self, q, averaged = False):
@@ -2202,7 +2209,7 @@ class System(pc.System):
         self.box = newbox
         #self.atoms = atoms
 
-    def extract_cubic_box(self, repeat=(3,3,3)):
+    def extract_cubic_box(self, repeat=(3,3,3)):# 这个方法不靠谱啊，他是搜三个笛卡尔坐标轴有没有原子，有的话就认为是方胞，这样容易搜到更小的胞
         """
         Extract a cubic representation of the box from triclinic cell
 
@@ -2219,7 +2226,7 @@ class System(pc.System):
         atoms: list of Atom objects
             atoms in the cubic box
         """
-        ratoms = self.repeat(repeat)
+        ratoms = self.repeat(repeat,scale_box=False)#原来没有scale_box=False 为了避免提取方晶胞后原胞发生变化，加上了。
         anchor = ratoms[0]
 
         nb = []
