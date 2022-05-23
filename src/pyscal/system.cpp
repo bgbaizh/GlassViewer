@@ -485,7 +485,7 @@ vector<double> System::get_pairdistances(double cut,bool partial,int centertype,
 2， 对于方晶胞，这个算法只适用于cutoff作为半径的内切球比晶胞的内切球小的
     情况，如果cutoff比内切球大的时候，则一个晶胞内的原子不足以无法填充
     cutoff球，必须采用我的扩胞方法。
-3， 为了加速，对于方晶胞，2cutoff小于boxx boxy boxz 中某一个时候，我在
+3， 为了加速，对于方晶胞、非partial情况，2cutoff小于boxx boxy boxz 中某一个时候，我在
     这个方向不扩胞，利用原胞的周期性原子映射进行计算（利用get_abs_distance）。
     对于三斜，我都会扩至少一倍以上的胞(避免使用get_abs_distance)
 
@@ -542,7 +542,7 @@ vector<double> System::get_pairdistances(double cut,bool partial,int centertype,
         if(cut/boxz<0.5){nnz=0;}  
     }
 
-    if(triclinic==0 && nnx==0 && nny==0 && nnz==0){halftimes=true;}
+    if(partial==false && triclinic==0 && nnx==0 && nny==0 && nnz==0){halftimes=true;}
     for (int ti=0; ti<nop; ti++){
         int inittj=0;
         if(partial==true && atoms[ti].type!=centertype) { continue; }

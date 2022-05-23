@@ -7,7 +7,8 @@
     <list default="true" id="43a52be0-6938-40cb-8486-d469ac0e7f21" name="变更" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/glassviewer/glassviewer.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/glassviewer/glassviewer.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/glassviewer/postest" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pyscal/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/pyscal/core.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -114,6 +115,8 @@
       <workItem from="1653065101017" duration="3188000" />
       <workItem from="1653206170901" duration="4231000" />
       <workItem from="1653278630791" duration="85000" />
+      <workItem from="1653336161477" duration="110000" />
+      <workItem from="1653336282331" duration="435000" />
     </task>
     <servers />
   </component>

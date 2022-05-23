@@ -5,6 +5,8 @@
 
 
 from math import dist
+
+from sqlalchemy import false
 import pyscal.traj_process as ptp
 from pyscal.formats.ase import convert_snap
 import pyscal.routines as routines
@@ -143,17 +145,36 @@ class System(pc.System):
         """
         Set atoms
         """
-        if(len(atoms) < 200):
-            #we need to estimate a rough idea
-            needed_atoms = 200 - len(atoms)
-            #get a rough cell
-            needed_cells = np.ceil(needed_atoms/len(atoms))
-            nx = int(needed_cells**(1/3))
-            nx = int(np.ceil(nx/2))
+        number_extendto=1500
+        if(len(atoms) < number_extendto):
 
-            if np.sum(self.box) == 0:
-                raise ValueError("Simulation box should be initialized before atoms")
-            atoms = self.repeat((nx, nx, nx), atoms=atoms, ghost=True, scale_box=True)
+            #原来这么扩胞没有意义，对于很扁细的晶胞扩胞后还是很扁很细的,对于三斜我不知道怎么处理，还按照他的吧
+            if(self.triclinic==1):
+                #we need to estimate a rough idea
+                needed_atoms = 200 - len(atoms)
+                #get a rough cell
+                needed_cells = np.ceil(needed_atoms/len(atoms))
+                nx = int(needed_cells**(1/3))
+                nx = int(np.ceil(nx/2))
+
+                if np.sum(self.box) == 0:
+                    raise ValueError("Simulation box should be initialized before atoms")
+                atoms = self.repeat((nx, nx, nx), atoms=atoms, ghost=True, scale_box=True)
+            else:
+                boxvecs = self.box
+                vol0 = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
+                rho=vol0/len(atoms)
+                vol=rho*number_extendto
+                egde=vol**(1/3)
+                nx=int(np.ceil((egde/np.sum(self.box[0])-1)/2))
+                ny=int(np.ceil((egde/np.sum(self.box[1])-1)/2))
+                nz=int(np.ceil((egde/np.sum(self.box[2])-1)/2))
+                if np.sum(self.box) == 0:
+                    raise ValueError("Simulation box should be initialized before atoms")
+                atoms = self.repeat((nx, ny, nz), atoms=atoms, ghost=True, scale_box=True)
+            
+            
+            
 
         self.set_atoms(atoms)
 
@@ -276,7 +297,7 @@ class System(pc.System):
 
     def calculate_pdf(self, histobins=100, histomin=0.0, histomax=None,cut=10, partial=False, centertype=1, secondtype=2):
         """
-        对于方晶胞，且cut小于box三个边的0.5倍，经过反复优化，速度很快。
+        对于方晶胞，且cut小于_box三个边的0.5倍，经过反复优化，速度很快。
         Calculate the radial distribution function.
 
         Parameters
@@ -318,13 +339,18 @@ class System(pc.System):
         #get box density
         boxvecs = self.box
         vol = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
-        natoms = self.nop
-        rho = natoms/vol
-
-
+        nallatom = self.ntotal
+        nrealatom=self.natoms
+        rho = nrealatom/vol
+        
+        Ncentertype=np.sum([1 for n in self.atoms if n.type == centertype])*nallatom/nrealatom
+        Nsecondtype=np.sum([1 for n in self.atoms if n.type == secondtype])*nallatom/nrealatom
         #now divide to get final value
         np.seterr(divide='ignore',invalid='ignore')
-        pdf = distri/(natoms*4*np.pi*r*r*rho)
+        if partial==False:
+            pdf = distri/(nallatom*4*np.pi*r*r*rho)
+        elif partial==True:
+            pdf = distri*nallatom/(Ncentertype*Nsecondtype*4*np.pi*r*r*rho)
         pdf=np.nan_to_num(pdf)
         return pdf, r
     def calculate_sf(self, pdf, r,precise): #precise=0 采用fft precise>0 在fft 的基础上更加细分q值，采用积分的方式，后者验证前者
