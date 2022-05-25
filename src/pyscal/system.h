@@ -88,9 +88,9 @@ class System{
         double get_abs_distance(Atom , Atom );
         vector<double> get_distance_vector(Atom , Atom);
         void set_neighbordistance(double);
-        vector<double> get_pairdistances(double cut,bool partial,int centertype,int secondtype);
+        vector<int> get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow);
         bool pdf_halftimes;
-        vector<double> get_pairangle();
+        vector<int> get_pairangle(double histlow,double histhigh,int histnum);
         double get_angle(int,int,int);
         //variables for a filter
         void susecells(int);

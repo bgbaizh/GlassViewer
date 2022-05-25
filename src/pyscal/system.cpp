@@ -478,7 +478,7 @@ void System::reset_main_neighbors(){
 }
 
 
-vector<double> System::get_pairdistances(double cut,bool partial,int centertype,int secondtype){
+vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow){
 /*  这东西原来的cut=0的的算法（即原算法，已经被我注释掉了）是有问题的。
 1， get_abs_distance的计算算法对三斜晶胞是有问题的。因此我对于三斜晶胞
     我将此算法禁用，采用我的扩胞的方式虽然增加计算量但是解决这个问题
@@ -491,8 +491,9 @@ vector<double> System::get_pairdistances(double cut,bool partial,int centertype,
 
 */
 
-    vector<double> res;
-    double d_square;
+    vector<int> res(histnum,0);
+    double deltacut=(cut-histlow)/histnum;
+    double d_square,d;
     double diffx,diffy,diffz;
     int nnx,nny,nnz;
     double Height[3]={0};
@@ -500,8 +501,10 @@ vector<double> System::get_pairdistances(double cut,bool partial,int centertype,
     double iCrossjnorm[3]={0};
     double kdotiCrossj[3]={0};
     int index[3][3]={0,1,2,1,2,0,2,0,1};// 计算叉乘的时候，以角标k i j 为顺序 按照index数组的顺序进行计算
+    double histlow_square=histlow*histlow;
     double cut_square=cut*cut;
     bool halftimes=false;
+    
     if(triclinic==1)
     {
         for(auto &m:index)
@@ -546,7 +549,7 @@ vector<double> System::get_pairdistances(double cut,bool partial,int centertype,
     for (int ti=0; ti<nop; ti++){
         int inittj=0;
         if(partial==true && atoms[ti].type!=centertype) { continue; }
-        if(halftimes=true){inittj=ti+1;}
+        if(halftimes==true){inittj=ti+1;}
         for (int tj=inittj; tj<nop; tj++){
             if(partial==true && atoms[tj].type!=secondtype) { continue; }
             if(ti==tj) { continue; }
@@ -567,8 +570,9 @@ vector<double> System::get_pairdistances(double cut,bool partial,int centertype,
                             diffz = atoms[tj].posz+i*box[0][2]+j*box[1][2]+k*box[2][2] - atoms[ti].posz;
                         }
                         d_square = diffx*diffx + diffy*diffy + diffz*diffz;
-                        if(d_square<=cut_square){
-                            res.emplace_back(pow(d_square,0.5));
+                        if(d_square<=cut_square && d_square>=histlow_square){
+                            d=pow(d_square,0.5);
+                            res[floor((d-histlow)/deltacut)]++;
                         }   
                     }
                 }
@@ -594,9 +598,10 @@ vector<double> System::get_pairdistances(double cut,bool partial,int centertype,
     return res;
 }
 
-vector<double> System::get_pairangle(){
+vector<int> System::get_pairangle(double histlow,double histhigh,int histnum){
 
-    vector<double> res;
+    vector<int> res(histnum,0);
+    double delta=(histhigh-histlow)/histnum;
     double d;
     //double diffx,diffy,diffz;
 
@@ -605,8 +610,10 @@ vector<double> System::get_pairangle(){
             for (int tk=tj; tk<atoms[ti].n_neighbors; tk++){
                 if(tk==tj) { continue; }
                 d = get_angle(ti,atoms[ti].neighbors[tj],atoms[ti].neighbors[tk]);
-                res.emplace_back(d);
-
+                if(d>=histlow && d<=histhigh)
+                {
+                    res[floor((d-histlow)/delta)]++;
+                }
         }
     }
     return res;

@@ -295,7 +295,7 @@ class System(pc.System):
         self.cset_atom(atom)
 
 
-    def calculate_pdf(self, histobins=100, histomin=0.0, histomax=None,cut=10, partial=False, centertype=1, secondtype=2):
+    def calculate_pdf(self, histobins=100, histomin=0.0, cut=10, partial=False, centertype=1, secondtype=2):
         """
         对于方晶胞，且cut小于_box三个边的0.5倍，经过反复优化，速度很快。
         Calculate the radial distribution function.
@@ -319,22 +319,23 @@ class System(pc.System):
             radius in distance units
 
         """
-        if cut <=0:
-            raise ValueError("value of cut should be positive")
-        distances = self.get_pairdistances(cut,partial,centertype,secondtype)
-
-        if histomax == None:
-            histomax = max(distances)
-
-        hist, bin_edges = np.histogram(distances, bins=histobins, range=(histomin, histomax))
-        edgewidth = np.abs(bin_edges[1]-bin_edges[0])
-        hist = hist.astype(float)
+        if(histomin>=cut):
+            raise ValueError("value of histomin should be less than value of cut(which serves as histomax)")
+        if histomin <0:
+            raise ValueError("value of histomin should be not be negative")
+        
+        hist = self.get_pairdistances(cut,partial,centertype,secondtype,histobins,histomin)
+        hist=np.array(hist)
+        delta=(cut-histomin)/histobins
+        
+        r=np.arange(histobins)*delta+histomin
+        
+        
         if self.pdf_halftimes==1:
-            distri=hist/edgewidth*2 # 未扩胞进行半数优化
+            distri=hist/float(delta)*2 # 未扩胞进行半数优化
         else:
-            distri=hist/edgewidth
+            distri=hist/float(delta)
             
-        r = bin_edges[:-1]
 
         #get box density
         boxvecs = self.box
@@ -381,7 +382,7 @@ class System(pc.System):
             q=q
         return sf,q
     
-    def calculate_bad(self, histobins=100, histomin=None, histomax=None):
+    def calculate_bad(self, histobins=100, histomin=0, histomax=np.pi):
         """
         Calculate the bond angle distribution.
 
@@ -404,27 +405,22 @@ class System(pc.System):
             radius in distance units
 
         """
-        thetas = self.get_pairangle()
-
-        if histomax == None:
-            histomax = max(thetas)
-        if histomin == None:
-            histomin = min(thetas)
-
-        hist, bin_edges = np.histogram(thetas, bins=histobins, range=(histomin, histomax))
-        edgewidth = np.abs(bin_edges[1]-bin_edges[0])
-        hist = hist.astype(float)
-        distri=hist/edgewidth
-        theta = bin_edges[:-1]
+        if(histomin>=histomax):
+            raise ValueError("value of histomin should be less than value of histomax")
+        if histomin <0:
+            raise ValueError("value of histomin should be not be negative")
+        hist = self.get_pairangle(histomin,histomax,histobins)
+        hist=np.array(hist)
+        delta=(histomax-histomin)/histobins
+        theta=np.arange(histobins)*delta+histomin
+        distri=hist/float(delta)
         Nisum=0
         for i in self.atoms:
             Ni=len(i.neighbors)
             Nisum=Nisum+Ni*(Ni-1)
-
-
         bad = distri/Nisum
-
         return bad, theta
+    
     def get_rho_vol(self):
         boxvecs = self.box
         self.vol = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
