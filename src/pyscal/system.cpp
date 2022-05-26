@@ -495,7 +495,8 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
     double deltacut=(cut-histlow)/histnum;
     double d_square,d;
     double diffx,diffy,diffz;
-    int nnx,nny,nnz;
+    int M[3]={0};
+    int N[3]={0};
     double Height[3]={0};
     double iCrossj[3][3]={0};
     double iCrossjnorm[3]={0};
@@ -504,7 +505,10 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
     double histlow_square=histlow*histlow;
     double cut_square=cut*cut;
     bool halftimes=false;
-    
+    double pointHeight[3]={0};
+    double pdotiCrossj[3]={0};
+
+    //计算平行六面体的高
     if(triclinic==1)
     {
         for(auto &m:index)
@@ -531,53 +535,68 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
             iCrossjnorm[i]=pow(iCrossjnorm[i],0.5);
             Height[i]=abs(kdotiCrossj[i]/iCrossjnorm[i]);
         }
-        nnx=int(ceil(cut/Height[0]));
-        nny=int(ceil(cut/Height[1]));
-        nnz=int(ceil(cut/Height[2]));
     }
     else if(triclinic==0)
-    {
-        nnx=int(ceil(cut/boxx));
-        nny=int(ceil(cut/boxy));
-        nnz=int(ceil(cut/boxz));
-        if(cut/boxx<0.5){nnx=0;}  //对于方晶胞足够小的cutoff，不扩胞从而加速
-        if(cut/boxy<0.5){nny=0;}  
-        if(cut/boxz<0.5){nnz=0;}  
+    {   Height[0]=boxx;
+        Height[1]=boxy;
+        Height[2]=boxz;
     }
+    if(partial==false && (cut/Height[0]<0.5) && (cut/Height[1]<0.5) &&(cut/Height[2]<0.5)){halftimes=true;}//开启半数优化
+    
+    if (halftimes==true){
+        for (int ti=0; ti<nop; ti++){
+            for (int tj=ti+1; tj<nop; tj++){
+                get_abs_distance(ti,tj,diffx,diffy,diffz);
+                d_square = diffx*diffx + diffy*diffy + diffz*diffz;
+                if(d_square<=cut_square && d_square>=histlow_square){
+                    d=pow(d_square,0.5);
+                    res[floor((d-histlow)/deltacut)]++;
+                }   
+            }
+        } 
+    }
+    if (halftimes==false){
+        for (int ti=0; ti<nop; ti++){
+            if(partial==true && atoms[ti].type!=centertype) { continue; }
+            //计算对于每个中心原子应该扩胞的范围
+            if(triclinic==1){
+                for(int i=0;i<3;i++){
+                    pdotiCrossj[i]+=atoms[ti].posx*iCrossj[i][0]+atoms[ti].posy*iCrossj[i][1]+atoms[ti].posz*iCrossj[i][2];
+                    pointHeight[i]=abs(pdotiCrossj[i]/iCrossjnorm[i]);
+                    M[i]=ceil((pointHeight[i]+cut)/Height[i]-1);
+                    N[i]=floor((pointHeight[i]-cut)/Height[i]);
+                }      
+            }
+            else{
+                    M[0]=ceil((atoms[ti].posx+cut)/Height[0]-1);
+                    N[0]=floor((atoms[ti].posx-cut)/Height[0]);
+                    M[1]=ceil((atoms[ti].posy+cut)/Height[1]-1);
+                    N[1]=floor((atoms[ti].posy-cut)/Height[1]);
+                    M[2]=ceil((atoms[ti].posz+cut)/Height[2]-1);
+                    N[2]=floor((atoms[ti].posz-cut)/Height[2]);
+            }   
+            for (int tj=0; tj<nop; tj++){
+                if(partial==true && atoms[tj].type!=secondtype) { continue; }
+                if(ti==tj) { continue; }
+                for(int i=N[0];i<=M[0];i++){
+                    for(int j=N[1];j<=M[1];j++){
+                        for(int k=N[2];k<=M[2];k++){
 
-    if(partial==false && triclinic==0 && nnx==0 && nny==0 && nnz==0){halftimes=true;}
-    for (int ti=0; ti<nop; ti++){
-        int inittj=0;
-        if(partial==true && atoms[ti].type!=centertype) { continue; }
-        if(halftimes==true){inittj=ti+1;}
-        for (int tj=inittj; tj<nop; tj++){
-            if(partial==true && atoms[tj].type!=secondtype) { continue; }
-            if(ti==tj) { continue; }
-
-            for(int i=-nnx;i<=nnx;i++){
-                            
-                for(int j=-nny;j<=nny;j++){
-                    for(int k=-nnz;k<=nnz;k++){
-                        if(triclinic ==0){
-                            get_abs_distance(ti,tj,diffx,diffy,diffz);
-                            diffx += i*boxx ;
-                            diffy += j*boxy ;
-                            diffz += k*boxz ;
-                        }
-                        else if (triclinic==1){
                             diffx = atoms[tj].posx+i*box[0][0]+j*box[1][0]+k*box[2][0] - atoms[ti].posx;
                             diffy = atoms[tj].posy+i*box[0][1]+j*box[1][1]+k*box[2][1] - atoms[ti].posy;
                             diffz = atoms[tj].posz+i*box[0][2]+j*box[1][2]+k*box[2][2] - atoms[ti].posz;
+  
+                            d_square = diffx*diffx + diffy*diffy + diffz*diffz;
+                            if(d_square<=cut_square && d_square>=histlow_square){
+                                d=pow(d_square,0.5);
+                                res[floor((d-histlow)/deltacut)]++;
+                            }   
                         }
-                        d_square = diffx*diffx + diffy*diffy + diffz*diffz;
-                        if(d_square<=cut_square && d_square>=histlow_square){
-                            d=pow(d_square,0.5);
-                            res[floor((d-histlow)/deltacut)]++;
-                        }   
                     }
                 }
+            
             }
-        }     
+        }      
     }
 
 
