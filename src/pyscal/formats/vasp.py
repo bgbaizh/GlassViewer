@@ -1,3 +1,4 @@
+from cmath import inf
 import numpy as np
 import gzip
 import pyscal.catom as pca
@@ -8,6 +9,8 @@ import os
 from ase.io import write, read
 import pyscal.formats.ase as ptase
 import warnings
+
+ 
 
 def read_snap(infile, compressed = False):
     """
@@ -62,8 +65,84 @@ def write_snap(sys, outfile, comments="pyscal", species=None):
         write(outfile, aseobj, format="vasp")
 
 
-def split_snaps(**kwargs):
-    raise NotImplementedError("split method for mdtraj is not implemented")
+def split_snaps(infile, compressed = False,makedir=True):
+    """
+    Read in a XDATCAR  trajectory file and convert it to individual time slices.
+
+    Parameters
+    ----------
+
+    filename : string
+        name of input file
+
+    compressed : bool, optional
+        force to read a `gz` zipped file. If the filename ends with `.gz`, use of this keyword is not
+        necessary, Default False.
+
+    Returns
+    -------
+    snaps : list of strings
+        a list of filenames which contain individual frames from the main trajectory.
+
+    """
+    if makedir:
+        newdir='./'+infile+'_dir/'
+        if not os.path.exists(newdir):
+            os.makedirs(newdir,exist_ok=True)
+    else:
+        newdir=''
+    raw = infile.split('.')
+    if raw[-1] == 'gz' or  compressed:
+        f = gzip.open(infile,'rt')
+    else:
+        f = open(infile,'r')
+
+
+    #pre-read to find the number of atoms
+    for count, line in enumerate(f):
+            if count == 6:
+                natoms = np.sum([int(i) for i in line.strip().split()])
+                break
+    f.close()
+
+    #now restart f()
+    if raw[-1] == 'gz' or  compressed:
+        f = gzip.open(infile,'rt')
+    else:
+        f = open(infile,'r')
+
+
+    nblock = natoms+8
+    startblock = 0
+    count=1
+    snaps = []
+
+
+
+    for line in f:
+        if(count==1):
+            ff = newdir+".".join([infile, 'snap', str(startblock), 'dat'])
+            lines = []
+            lines.append(line)
+
+        elif(count<nblock):
+            lines.append(line)
+
+        else:
+            lines.append(line)
+            snaps.append(ff)
+            fout = open(ff,'w')
+            for wline in lines:
+                fout.write(wline)
+            fout.close()
+
+            count=0
+            startblock+=1
+        count+=1
+
+    f.close()
+
+    return snaps
 
 def convert_snap(**kwargs):
     raise NotImplementedError("convert method for mdtraj is not implemented")

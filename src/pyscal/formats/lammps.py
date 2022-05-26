@@ -312,7 +312,7 @@ def write_snap(sys, outfile, compressed = False,
         dump.close()
 
 
-def split_snaps(infile, compressed = False):
+def split_snaps(infile, compressed = False,makedir=True):
     """
     Read in a LAMMPS dump trajectory file and convert it to individual time slices.
 
@@ -332,6 +332,12 @@ def split_snaps(infile, compressed = False):
         a list of filenames which contain individual frames from the main trajectory.
 
     """
+    if makedir:
+        newdir='./'+infile+'_dir/'
+        if not os.path.exists(newdir):
+            os.makedirs(newdir,exist_ok=True)
+    else:
+        newdir=''
     raw = infile.split('.')
     if raw[-1] == 'gz' or  compressed:
         f = gzip.open(infile,'rt')
@@ -362,7 +368,7 @@ def split_snaps(infile, compressed = False):
 
     for line in f:
         if(count==1):
-            ff = ".".join([infile, 'snap', str(startblock), 'dat'])
+            ff = newdir+".".join([infile, 'snap', str(startblock), 'dat'])
             lines = []
             lines.append(line)
 

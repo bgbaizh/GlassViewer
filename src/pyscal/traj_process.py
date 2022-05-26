@@ -134,7 +134,7 @@ def write_file(sys, outfile, format="lammps-dump", compressed = False,
             raise TypeError("format recieved an unknown option %s"%format)
 
 
-def split_trajectory(infile, format='lammps-dump', compressed=False):
+def split_trajectory(infile, format='lammps-dump', compressed=False,makedir=True):
     """
     Read in a trajectory file and convert it to individual time slices.
 
@@ -167,13 +167,13 @@ def split_trajectory(infile, format='lammps-dump', compressed=False):
     snaps = []
 
     if format=='lammps-dump':
-        snaps = ptlammps.split_snaps(infile, compressed = compressed)
+        snaps = ptlammps.split_snaps(infile, compressed = compressed,makedir=makedir)
     elif format == 'ase':
         snaps = ptase.split_snaps()
     elif format == 'mdtraj':
         snaps = ptmdtraj.split_snaps()
     elif format == 'poscar':
-        snaps = ptvasp.split_snaps()
+        snaps = ptvasp.split_snaps(infile,compressed=compressed,makedir=makedir)
     else:
         raise TypeError("format recieved an unknown option %s"%format)
 
