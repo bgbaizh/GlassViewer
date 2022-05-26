@@ -86,9 +86,11 @@ def split_snaps(infile, compressed = False,makedir=True):
 
     """
     if makedir:
-        newdir='./'+infile+'_dir/'
+        newdir='./'+infile+'_dir'
         if not os.path.exists(newdir):
             os.makedirs(newdir,exist_ok=True)
+        elif not os.path.exists(newdir+'/'):
+            raise ValueError('file with name '+infile+'_dir exists, folder with the same name cannot be created')
     else:
         newdir=''
     raw = infile.split('.')
@@ -121,7 +123,7 @@ def split_snaps(infile, compressed = False,makedir=True):
 
     for line in f:
         if(count==1):
-            ff = newdir+".".join([infile, 'snap', str(startblock), 'dat'])
+            ff = newdir+'/'+".".join([infile, 'snap', str(startblock), 'dat'])
             lines = []
             lines.append(line)
 
