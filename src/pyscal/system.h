@@ -14,6 +14,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include "atom.h"
+#include <mutex> 
 
 namespace py = pybind11;
 using namespace std;
@@ -87,8 +88,39 @@ class System{
         double get_abs_distance(int,int,double&,double&,double&);
         double get_abs_distance(Atom , Atom );
         vector<double> get_distance_vector(Atom , Atom);
+        mutex pdfreslock;
+        mutex pdfthreadflaglock;
         void set_neighbordistance(double);
-        vector<int> get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow);
+        vector<int> get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow,int threadnum);
+        class pdfpara{
+            public:
+            vector<int> res;
+            vector<vector<int>> resthread;
+            double deltacut;
+            //double d_square,d;
+            //double diffx,diffy,diffz;
+            //int M[3]={0};
+            //int N[3]={0};
+            double Height[3]={0};
+            double iCrossj[3][3]={0};
+            double iCrossjnorm[3]={0};
+            double kdotiCrossj[3]={0};
+            int index[3][3]={0,1,2,1,2,0,2,0,1};// 计算叉乘的时候，以角标k i j 为顺序 按照index数组的顺序进行计算
+            double histlow_square;
+            double cut_square;
+            bool halftimes=false;
+            double pointHeight[3]={0};
+            double pdotiCrossj[3]={0};
+            double cut;
+            bool partial;
+            int centertype;
+            int secondtype;
+            int histnum;
+            double histlow;
+            int threadnum;
+            bool *threadflag;
+        };
+        static void pairditancethread(int atomsstart, int atomsfinish, int threadid, System* sys, pdfpara* s);
         bool pdf_halftimes;
         vector<int> get_pairangle(double histlow,double histhigh,int histnum);
         double get_angle(int,int,int);

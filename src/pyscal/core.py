@@ -295,7 +295,7 @@ class System(pc.System):
         self.cset_atom(atom)
 
 
-    def calculate_pdf(self, histobins=100, histomin=0.0, cut=10, partial=False, centertype=1, secondtype=2):
+    def calculate_pdf(self, histobins=100, histomin=0.0, cut=10, partial=False, centertype=1, secondtype=2,threadnum=10):
         """
         对于方晶胞，且cut小于_box三个边的0.5倍，经过反复优化，速度很快。
         Calculate the radial distribution function.
@@ -324,7 +324,7 @@ class System(pc.System):
         if histomin <0:
             raise ValueError("value of histomin should be not be negative")
         
-        hist = self.get_pairdistances(cut,partial,centertype,secondtype,histobins,histomin)
+        hist = self.get_pairdistances(cut,partial,centertype,secondtype,histobins,histomin,threadnum)
         hist=np.array(hist)
         delta=(cut-histomin)/histobins
         

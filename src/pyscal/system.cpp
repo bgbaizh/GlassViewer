@@ -7,6 +7,8 @@
 #include "string.h"
 #include <chrono>
 #include <pybind11/stl.h>
+#include <thread>
+#include <mutex>
 
 using namespace voro;
 
@@ -478,7 +480,7 @@ void System::reset_main_neighbors(){
 }
 
 
-vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow){
+vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow,int threadnum){
 /*  这东西原来的cut=0的的算法（即原算法，已经被我注释掉了）是有问题的。
 1， get_abs_distance的计算算法对三斜晶胞是有问题的。因此我对于三斜晶胞
     我将此算法禁用，采用我的扩胞的方式虽然增加计算量但是解决这个问题
@@ -491,37 +493,51 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
 
 */
 
-    vector<int> res(histnum,0);
-    double deltacut=(cut-histlow)/histnum;
-    double d_square,d;
-    double diffx,diffy,diffz;
-    int M[3]={0};
-    int N[3]={0};
-    double Height[3]={0};
-    double iCrossj[3][3]={0};
-    double iCrossjnorm[3]={0};
-    double kdotiCrossj[3]={0};
-    int index[3][3]={0,1,2,1,2,0,2,0,1};// 计算叉乘的时候，以角标k i j 为顺序 按照index数组的顺序进行计算
-    double histlow_square=histlow*histlow;
-    double cut_square=cut*cut;
-    bool halftimes=false;
-    double pointHeight[3]={0};
-    double pdotiCrossj[3]={0};
 
+    
+    //vector<int> threadflag(threadnum,0);
+
+    pdfpara s;
+    s.res = vector<int>(histnum, 0);
+    s.resthread = vector<vector<int>>(threadnum,vector<int>(histnum, 0));
+    s.deltacut=(cut-histlow)/histnum;
+    s.histlow_square=histlow*histlow;
+    s.cut_square=cut*cut;
+    s.cut=cut;
+    s.partial=partial;
+    s.centertype=centertype;
+    s.secondtype=secondtype;
+    s.histnum=histnum;
+    s.histlow=histlow;
+    //线程相关
+    s.threadnum=threadnum;
+    s.threadflag=(bool*)malloc(threadnum*sizeof(bool));
+    memset(s.threadflag, 0, threadnum * sizeof(bool));
+    int threadatomsper = (nop / threadnum);
+    vector<int> threadatoms(threadnum, threadatomsper);
+    if (threadnum * threadatomsper < nop)
+    {  
+        int t = nop - threadnum * threadatomsper;
+        for (int i = 0; i < t; i++)
+        {  
+            threadatoms[i]++;
+        }
+    }
+    int atomsstart=0;
     //计算平行六面体的高
     if(triclinic==1)
     {
-        for(auto &m:index)
+        for(auto &m:s.index)
         {
             int k= m[0];
             int i =m[1];
             int j =m[2];
-            for(auto &m2:index)
+            for(auto &m2:s.index)
             {
                 int k2= m2[0];
                 int i2 =m2[1];
                 int j2 =m2[2];
-                iCrossj[k][k2]=box[i][i2]*box[j][j2]-box[i][j2]*box[j][i2];
+                s.iCrossj[k][k2]=box[i][i2]*box[j][j2]-box[i][j2]*box[j][i2];
             }
         }
         
@@ -529,75 +545,51 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
         {
             for(int j=0;j<3;j++)
             {
-            iCrossjnorm[i]+= iCrossj[i][j]*iCrossj[i][j];
-            kdotiCrossj[i]+=box[i][j]*iCrossj[i][j];
+            s.iCrossjnorm[i]+= s.iCrossj[i][j]*s.iCrossj[i][j];
+            s.kdotiCrossj[i]+=box[i][j]*s.iCrossj[i][j];
             }
-            iCrossjnorm[i]=pow(iCrossjnorm[i],0.5);
-            Height[i]=abs(kdotiCrossj[i]/iCrossjnorm[i]);
+            s.iCrossjnorm[i]=pow(s.iCrossjnorm[i],0.5);
+            s.Height[i]=abs(s.kdotiCrossj[i]/s.iCrossjnorm[i]);
         }
     }
     else if(triclinic==0)
-    {   Height[0]=boxx;
-        Height[1]=boxy;
-        Height[2]=boxz;
+    {   s.Height[0]=boxx;
+        s.Height[1]=boxy;
+        s.Height[2]=boxz;
     }
-    if(partial==false && (cut/Height[0]<0.5) && (cut/Height[1]<0.5) &&(cut/Height[2]<0.5)){halftimes=true;}//开启半数优化
+    if(partial==false && (cut/s.Height[0]<0.5) && (cut/s.Height[1]<0.5) &&(cut/s.Height[2]<0.5)){s.halftimes=true;}//开启半数优化
     
-    if (halftimes==true){
-        for (int ti=0; ti<nop; ti++){
-            for (int tj=ti+1; tj<nop; tj++){
-                get_abs_distance(ti,tj,diffx,diffy,diffz);
-                d_square = diffx*diffx + diffy*diffy + diffz*diffz;
-                if(d_square<=cut_square && d_square>=histlow_square){
-                    d=pow(d_square,0.5);
-                    res[floor((d-histlow)/deltacut)]++;
-                }   
-            }
-        } 
+    
+    for(int threadid=0;threadid<threadnum;threadid++)
+    {
+        
+        thread theadcal(pairditancethread,atomsstart, atomsstart+threadatoms[threadid],threadid,this,&s);
+        atomsstart += threadatoms[threadid];
+        theadcal.detach();
+        s.threadflag[threadid] = 1;
     }
-    if (halftimes==false){
+    
+    /*if (s.halftimes == false) {
+        int threadid = 0;
         for (int ti=0; ti<nop; ti++){
             if(partial==true && atoms[ti].type!=centertype) { continue; }
             //计算对于每个中心原子应该扩胞的范围
-            if(triclinic==1){
-                for(int i=0;i<3;i++){
-                    pdotiCrossj[i]+=atoms[ti].posx*iCrossj[i][0]+atoms[ti].posy*iCrossj[i][1]+atoms[ti].posz*iCrossj[i][2];
-                    pointHeight[i]=abs(pdotiCrossj[i]/iCrossjnorm[i]);
-                    M[i]=ceil((pointHeight[i]+cut)/Height[i]-1);
-                    N[i]=floor((pointHeight[i]-cut)/Height[i]);
-                }      
-            }
-            else{
-                    M[0]=ceil((atoms[ti].posx+cut)/Height[0]-1);
-                    N[0]=floor((atoms[ti].posx-cut)/Height[0]);
-                    M[1]=ceil((atoms[ti].posy+cut)/Height[1]-1);
-                    N[1]=floor((atoms[ti].posy-cut)/Height[1]);
-                    M[2]=ceil((atoms[ti].posz+cut)/Height[2]-1);
-                    N[2]=floor((atoms[ti].posz-cut)/Height[2]);
-            }   
-            for (int tj=0; tj<nop; tj++){
-                if(partial==true && atoms[tj].type!=secondtype) { continue; }
-                if(ti==tj) { continue; }
-                for(int i=N[0];i<=M[0];i++){
-                    for(int j=N[1];j<=M[1];j++){
-                        for(int k=N[2];k<=M[2];k++){
-
-                            diffx = atoms[tj].posx+i*box[0][0]+j*box[1][0]+k*box[2][0] - atoms[ti].posx;
-                            diffy = atoms[tj].posy+i*box[0][1]+j*box[1][1]+k*box[2][1] - atoms[ti].posy;
-                            diffz = atoms[tj].posz+i*box[0][2]+j*box[1][2]+k*box[2][2] - atoms[ti].posz;
-  
-                            d_square = diffx*diffx + diffy*diffy + diffz*diffz;
-                            if(d_square<=cut_square && d_square>=histlow_square){
-                                d=pow(d_square,0.5);
-                                res[floor((d-histlow)/deltacut)]++;
-                            }   
-                        }
-                    }
+            while(true){
+                pdfthreadflaglock.lock();
+                if (s.threadflag[threadid] == 0)
+                {
+                    s.threadflag[threadid] = 1;
+                    pdfthreadflaglock.unlock();
+                    break;
                 }
-            
+                pdfthreadflaglock.unlock();
+                threadid++;
+                if(threadid==s.threadnum){threadid=0;}
             }
+            thread theadcal(pairditancethread,ti,threadid,this,&s);
+            theadcal.detach();
         }      
-    }
+    }*/
 
 
     /*
@@ -613,10 +605,105 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
         }
     }
     */
-    pdf_halftimes=halftimes;
-    return res;
+    // 等待所有线程结束
+    while (true) {
+        int threadramainnum = 0;
+        pdfthreadflaglock.lock();
+        for (int i = 0; i < s.threadnum; i++)
+        {
+            if (s.threadflag[i] == 1)
+            {
+                threadramainnum++;
+            }
+        }
+        pdfthreadflaglock.unlock();
+        if (threadramainnum==0) { break; }
+    }
+    for (int i = 0; i < histnum; i++)
+    {
+        for (int j = 0; j < threadnum; j++)
+        {
+            s.res[i] += s.resthread[j][i];
+        }
+    }
+    free(s.threadflag);
+    pdf_halftimes=s.halftimes;
+     return s.res;
 }
 
+void System::pairditancethread(int atomsstart,int atomsfinish, int threadid,System* sys,pdfpara * s){
+
+    double d_square,d;
+    double diffx,diffy,diffz;
+    int M[3]={0};
+    int N[3]={0};
+    double pointHeight[3]={0};
+    double pdotiCrossj[3]={0};
+
+
+    if (s->halftimes == true) {
+        for (int ti = atomsstart; ti < atomsfinish; ti++) {
+            for (int tj = ti + 1; tj < sys->nop; tj++) {
+                sys->get_abs_distance(ti, tj, diffx, diffy, diffz);
+                d_square = diffx * diffx + diffy * diffy + diffz * diffz;
+                if (d_square <= s->cut_square && d_square >= s->histlow_square) {
+                    d = pow(d_square, 0.5);
+                    
+                    s->resthread[threadid][floor((d - s->histlow) / s->deltacut)]++;
+                    
+                }
+            }
+        }
+    }
+    if (s->halftimes==false){
+        for (int ti = atomsstart; ti < atomsfinish; ti++) {
+            if (s->partial == true && sys->atoms[ti].type != s->centertype) { continue; }
+            //计算对于每个中心原子应该扩胞的范围
+            if (sys->triclinic == 1) {
+                for (int i = 0; i < 3; i++) {
+                    pdotiCrossj[i] += sys->atoms[ti].posx * s->iCrossj[i][0] + sys->atoms[ti].posy * s->iCrossj[i][1] + sys->atoms[ti].posz * s->iCrossj[i][2];
+                    pointHeight[i] = abs(s->pdotiCrossj[i] / s->iCrossjnorm[i]);
+                    M[i] = ceil((pointHeight[i] + s->cut) / s->Height[i] - 1);
+                    N[i] = floor((pointHeight[i] - s->cut) / s->Height[i]);
+                }
+            }
+            else {
+                M[0] = ceil((sys->atoms[ti].posx + s->cut) / s->Height[0] - 1);
+                N[0] = floor((sys->atoms[ti].posx - s->cut) / s->Height[0]);
+                M[1] = ceil((sys->atoms[ti].posy + s->cut) / s->Height[1] - 1);
+                N[1] = floor((sys->atoms[ti].posy - s->cut) / s->Height[1]);
+                M[2] = ceil((sys->atoms[ti].posz + s->cut) / s->Height[2] - 1);
+                N[2] = floor((sys->atoms[ti].posz - s->cut) / s->Height[2]);
+            }
+            for (int tj = 0; tj < sys->nop; tj++) {
+                if (s->partial == true && sys->atoms[tj].type != s->secondtype) { continue; }
+                if (ti == tj) { continue; }
+                for (int i = N[0]; i <= M[0]; i++) {
+                    for (int j = N[1]; j <= M[1]; j++) {
+                        for (int k = N[2]; k <= M[2]; k++) {
+
+                            diffx = sys->atoms[tj].posx + i * sys->box[0][0] + j * sys->box[1][0] + k * sys->box[2][0] - sys->atoms[ti].posx;
+                            diffy = sys->atoms[tj].posy + i * sys->box[0][1] + j * sys->box[1][1] + k * sys->box[2][1] - sys->atoms[ti].posy;
+                            diffz = sys->atoms[tj].posz + i * sys->box[0][2] + j * sys->box[1][2] + k * sys->box[2][2] - sys->atoms[ti].posz;
+
+                            d_square = diffx * diffx + diffy * diffy + diffz * diffz;
+                            if (d_square <= s->cut_square && d_square >= s->histlow_square) {
+                                d = pow(d_square, 0.5);
+                                
+                                s->resthread[threadid][floor((d - s->histlow) / s->deltacut)]++;
+                                
+                            }
+                        }
+                    }
+                }
+            }
+        }
+             
+    }
+    sys->pdfthreadflaglock.lock();
+    s->threadflag[threadid] = 0;
+    sys->pdfthreadflaglock.unlock();
+}
 vector<int> System::get_pairangle(double histlow,double histhigh,int histnum){
 
     vector<int> res(histnum,0);
@@ -2062,7 +2149,7 @@ void System::get_all_neighbors_voronoi(){
     int i;
     int ti,id,tnx,tny,tnz, nverts;
 
-    double rx,ry,rz,tsum, fa, x, y, z, vol;
+    double rx,ry,rz,tsum, fa, x=0, y=0, z=0, vol;//原作者没有初始化xyz ，我看了一下代码将之初始化为0
     vector<int> neigh,f_vert, vert_nos;
     vector<double> facearea, v, faceperimeters;
     voronoicell_neighbor c;
