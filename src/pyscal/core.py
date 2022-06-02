@@ -145,10 +145,24 @@ class System(pc.System):
         """
         Set atoms
         """
-        number_extendto=1500
-        if(len(atoms) < number_extendto):
-
-            #原来这么扩胞没有意义，对于很扁细的晶胞扩胞后还是很扁很细的,对于三斜我不知道怎么处理，还按照他的吧
+        number_extendto=200
+        if(len(atoms) < number_extendto):\
+            #对于三斜和正交晶胞一起扩胞，尽可能使三个高相同。把内切球中的原子数扩到number_extendto
+            height1=abs(np.dot(self.box[0],np.cross(self.box[1],self.box[2])))/np.linalg.norm(np.cross(self.box[1],self.box[2]))
+            height2=abs(np.dot(self.box[1],np.cross(self.box[0],self.box[2])))/np.linalg.norm(np.cross(self.box[0],self.box[2]))
+            height3=abs(np.dot(self.box[2],np.cross(self.box[0],self.box[1])))/np.linalg.norm(np.cross(self.box[0],self.box[1]))
+            boxvecs = self.box
+            vol0 = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
+            rho=vol0/len(atoms)
+            ball_vol=rho*number_extendto
+            ball_d=2*((3/4*ball_vol/np.pi)**(1/3))
+            nx=int(np.ceil((ball_d/height1-1)/2))
+            ny=int(np.ceil((ball_d/height2-1)/2))
+            nz=int(np.ceil((ball_d/height3-1)/2))
+            if np.sum(self.box) == 0:
+                raise ValueError("Simulation box should be initialized before atoms")
+            atoms = self.repeat((nx, ny, nz), atoms=atoms, ghost=True, scale_box=True)
+            ''' #原来这么扩胞没有意义，对于很扁细的晶胞扩胞后还是很扁很细的,对于三斜我不知道怎么处理，还按照他的吧
             if(self.triclinic==1):
                 #we need to estimate a rough idea
                 needed_atoms = 200 - len(atoms)
@@ -160,6 +174,9 @@ class System(pc.System):
                 if np.sum(self.box) == 0:
                     raise ValueError("Simulation box should be initialized before atoms")
                 atoms = self.repeat((nx, nx, nx), atoms=atoms, ghost=True, scale_box=True)
+                
+
+
             else:
                 boxvecs = self.box
                 vol0 = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
@@ -173,7 +190,7 @@ class System(pc.System):
                     raise ValueError("Simulation box should be initialized before atoms")
                 atoms = self.repeat((nx, ny, nz), atoms=atoms, ghost=True, scale_box=True)
             
-            
+            '''
             
 
         self.set_atoms(atoms)

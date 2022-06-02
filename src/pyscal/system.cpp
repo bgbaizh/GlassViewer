@@ -481,16 +481,13 @@ void System::reset_main_neighbors(){
 
 
 vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow,int threadnum){
-/*  这东西原来的cut=0的的算法（即原算法，已经被我注释掉了）是有问题的。
-1， get_abs_distance的计算算法对三斜晶胞是有问题的。因此我对于三斜晶胞
-    我将此算法禁用，采用我的扩胞的方式虽然增加计算量但是解决这个问题
-2， 对于方晶胞，这个算法只适用于cutoff作为半径的内切球比晶胞的内切球小的
-    情况，如果cutoff比内切球大的时候，则一个晶胞内的原子不足以无法填充
-    cutoff球，必须采用我的扩胞方法。
-3， 为了加速，对于方晶胞、非partial情况，2cutoff小于boxx boxy boxz 中某一个时候，我在
-    这个方向不扩胞，利用原胞的周期性原子映射进行计算（利用get_abs_distance）。
-    对于三斜，我都会扩至少一倍以上的胞(避免使用get_abs_distance)
+/*
 
+    1，这整套程序没有考虑一个cutoff球大于晶胞内切球的情况。他是通过在最开始初始化atoms的时候对于太小的晶胞扩到几千原子的晶胞来避免这个问题，对于cutoff搜索neighbor算法，由于一般的cutoff比较小，所以不出问题。
+    但是这里面存在一个问题，初始化atoms的时候对于正交晶胞我改写了一下算法，让他尽可能扩成一个正方的晶胞，但是对于三斜晶胞，这个扩胞方式还应该再写写。
+    2，在计算pdf的时候由于需要考虑长程，用来获得精细的结构因子我在程序中考虑了cutoff球大于晶胞内切球的情况，同时引入多线程：
+        对于非partial情况，同时cutoff球内切晶胞的情况，不扩胞，对原胞进行周期性复用，同时开启halftimes优化
+        对于partial情况，或者cutoff球大于晶胞内切球的情况，扩胞，此时无法采取对原晶胞周期性复用。原则上partial的cutoff球小于晶胞内切球也可以采用原胞复用，只不过不能开启halftimes，这个还没单独写。
 */
 
 
