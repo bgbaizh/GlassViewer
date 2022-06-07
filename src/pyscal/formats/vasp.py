@@ -114,32 +114,61 @@ def split_snaps(infile, compressed = False,makedir=True):
         f = open(infile,'r')
 
 
-    nblock = natoms+8
+
     startblock = 0
     count=1
+    header=[]
+    nheader=8
     snaps = []
-
-
+    nohead=False
 
     for line in f:
-        if(count==1):
-            ff = newdir+'/'+".".join([infile, 'snap', str(startblock), 'dat'])
-            lines = []
-            lines.append(line)
-
-        elif(count<nblock):
-            lines.append(line)
-
+        if(startblock==0):
+            if(count==1):
+                ff = newdir+'/'+".".join([infile, 'snap', str(startblock), 'dat'])
+                lines = []
+                lines.append(line)
+                header.append(line)
+                nblock = natoms+nheader
+            elif(count<=(nheader-1)):
+                lines.append(line)
+                header.append(line)
+            elif(count<nblock):
+                lines.append(line)
+            else:
+                lines.append(line)
+                snaps.append(ff)
+                fout = open(ff,'w')
+                for wline in lines:
+                    fout.write(wline)
+                fout.close()
+                count=0
+                startblock+=1
         else:
-            lines.append(line)
-            snaps.append(ff)
-            fout = open(ff,'w')
-            for wline in lines:
-                fout.write(wline)
-            fout.close()
-
-            count=0
-            startblock+=1
+            if(count==1):
+                ff = newdir+'/'+".".join([infile, 'snap', str(startblock), 'dat'])
+                lines = []
+                lines.append(line)
+                if(line.split()[0]=='Direct' and line.split()[1]=="configuration="):
+                    nohead=True
+                    nblock = natoms+1
+                else:
+                    nohead=False
+                    nblock = natoms+nheader
+            elif(count<nblock):
+                lines.append(line)
+            else:
+                lines.append(line)
+                snaps.append(ff)
+                fout = open(ff,'w')
+                if(nohead==True):
+                    for wline in header:
+                        fout.write(wline)
+                for wline in lines:
+                    fout.write(wline)
+                fout.close()
+                count=0
+                startblock+=1
         count+=1
 
     f.close()
