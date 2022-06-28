@@ -81,10 +81,10 @@ class System(pc.System):
     >>> sys = System()
     >>> sys.read_inputfile('atoms.dat')
     """
-    vol = 0
-    rho = 0
-    def __init__(self):
 
+    def __init__(self):
+        self.vol = 0
+        self.rho = 0
         self.initialized = True
         self.neighbors_found = False
         self.neighbor_method = None

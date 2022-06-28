@@ -41,7 +41,7 @@ def read_snap(infile, compressed = False):
     >>> atoms, box = read_poscar('POSCAR.dat', compressed=True)
 
     """
-    aseobj = read(infile, format="vasp")
+    aseobj = read(infile, format="vasp",parallel=False)
     atoms, box = ptase.read_snap(aseobj)
     return atoms, box
 
