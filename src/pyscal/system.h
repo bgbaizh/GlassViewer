@@ -88,7 +88,7 @@ class System{
         double get_abs_distance(int,int,double&,double&,double&);
         double get_abs_distance(Atom , Atom );
         vector<double> get_distance_vector(Atom , Atom);
-        mutex pdfreslock;
+        //mutex pdfreslock;
         mutex pdfthreadflaglock;
         void set_neighbordistance(double);
         vector<int> get_pairdistances(double cut,bool partial,int centertype,int secondtype,int histnum,double histlow,int threadnum);

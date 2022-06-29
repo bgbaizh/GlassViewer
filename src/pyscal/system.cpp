@@ -508,8 +508,11 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
     s.histlow=histlow;
     //线程相关
     s.threadnum=threadnum;
-    s.threadflag=(bool*)malloc(threadnum*sizeof(bool));
-    memset(s.threadflag, 0, threadnum * sizeof(bool));
+    if (threadnum>1)
+    {
+        s.threadflag=(bool*)malloc(threadnum*sizeof(bool));
+        memset(s.threadflag, 0, threadnum * sizeof(bool));
+    }
     int threadatomsper = (nop / threadnum);
     vector<int> threadatoms(threadnum, threadatomsper);
     if (threadnum * threadatomsper < nop)
@@ -557,14 +560,7 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
     if(partial==false && (cut/s.Height[0]<0.5) && (cut/s.Height[1]<0.5) &&(cut/s.Height[2]<0.5)){s.halftimes=true;}//开启半数优化
     
     
-    for(int threadid=0;threadid<threadnum;threadid++)
-    {
-        
-        thread theadcal(pairditancethread,atomsstart, atomsstart+threadatoms[threadid],threadid,this,&s);
-        atomsstart += threadatoms[threadid];
-        theadcal.detach();
-        s.threadflag[threadid] = 1;
-    }
+
     
     /*if (s.halftimes == false) {
         int threadid = 0;
@@ -602,30 +598,52 @@ vector<int> System::get_pairdistances(double cut,bool partial,int centertype,int
         }
     }
     */
-    // 等待所有线程结束
-    while (true) {
-        int threadramainnum = 0;
-        pdfthreadflaglock.lock();
-        for (int i = 0; i < s.threadnum; i++)
+    if(threadnum>1){
+        for(int threadid=0;threadid<threadnum;threadid++)
         {
-            if (s.threadflag[i] == 1)
+            s.threadflag[threadid] = 1;
+            thread theadcal(pairditancethread,atomsstart, atomsstart+threadatoms[threadid],threadid,this,&s);
+            atomsstart += threadatoms[threadid];
+            theadcal.detach();
+            
+        }
+        // 等待所有线程结束
+        while (true) {
+            int threadramainnum = 0;
+            pdfthreadflaglock.lock();
+            for (int i = 0; i < s.threadnum; i++)
             {
-                threadramainnum++;
+                if (s.threadflag[i] == 1)
+                {
+                    threadramainnum++;
+                }
+            }
+            pdfthreadflaglock.unlock();
+            if (threadramainnum==0) { break; }
+        }
+        for (int i = 0; i < histnum; i++)
+        {
+            for (int j = 0; j < threadnum; j++)
+            {
+                s.res[i] += s.resthread[j][i];
             }
         }
-        pdfthreadflaglock.unlock();
-        if (threadramainnum==0) { break; }
+        free(s.threadflag);
+        pdf_halftimes=s.halftimes;
+        return s.res;
     }
-    for (int i = 0; i < histnum; i++)
-    {
-        for (int j = 0; j < threadnum; j++)
-        {
-            s.res[i] += s.resthread[j][i];
-        }
+    else if(threadnum==1)
+    {   
+        int threadid=0;
+        thread theadcal(pairditancethread,atomsstart, atomsstart+threadatoms[threadid],threadid,this,&s);
+        //atomsstart += threadatoms[threadid];
+        theadcal.join();
+        //s.threadflag[threadid] = 1;
+        //free(s.threadflag);
+        pdf_halftimes=s.halftimes;
+        return s.resthread[threadid];
     }
-    free(s.threadflag);
-    pdf_halftimes=s.halftimes;
-     return s.res;
+
 }
 
 void System::pairditancethread(int atomsstart,int atomsfinish, int threadid,System* sys,pdfpara * s){
@@ -697,9 +715,12 @@ void System::pairditancethread(int atomsstart,int atomsfinish, int threadid,Syst
         }
              
     }
-    sys->pdfthreadflaglock.lock();
-    s->threadflag[threadid] = 0;
-    sys->pdfthreadflaglock.unlock();
+    if (s->threadnum>1)
+    {
+        sys->pdfthreadflaglock.lock();
+        s->threadflag[threadid] = 0;
+        sys->pdfthreadflaglock.unlock();
+    }
 }
 vector<int> System::get_pairangle(double histlow,double histhigh,int histnum){
 
