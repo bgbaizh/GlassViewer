@@ -689,24 +689,26 @@ void System::pairditancethread(int atomsstart,int atomsfinish, int threadid,Syst
                 N[1] = floor((sys->atoms[ti].posy - s->cut) / s->Height[1]);
                 M[2] = ceil((sys->atoms[ti].posz + s->cut) / s->Height[2] - 1);
                 N[2] = floor((sys->atoms[ti].posz - s->cut) / s->Height[2]);
+
             }
             for (int tj = 0; tj < sys->nop; tj++) {
                 if (s->partial == true && sys->atoms[tj].type != s->secondtype) { continue; }
-                if (ti == tj) { continue; }
+                
                 for (int i = N[0]; i <= M[0]; i++) {
                     for (int j = N[1]; j <= M[1]; j++) {
                         for (int k = N[2]; k <= M[2]; k++) {
-
+                            if (ti == tj && i==0 && j==0 && k==0) { continue; }
                             diffx = sys->atoms[tj].posx + i * sys->box[0][0] + j * sys->box[1][0] + k * sys->box[2][0] - sys->atoms[ti].posx;
                             diffy = sys->atoms[tj].posy + i * sys->box[0][1] + j * sys->box[1][1] + k * sys->box[2][1] - sys->atoms[ti].posy;
                             diffz = sys->atoms[tj].posz + i * sys->box[0][2] + j * sys->box[1][2] + k * sys->box[2][2] - sys->atoms[ti].posz;
 
                             d_square = diffx * diffx + diffy * diffy + diffz * diffz;
+                            //std::cout << s->cut_square;
                             if (d_square <= s->cut_square && d_square >= s->histlow_square) {
                                 d = pow(d_square, 0.5);
                                 
                                 s->resthread[threadid][floor((d - s->histlow) / s->deltacut)]++;
-                                
+
                             }
                         }
                     }

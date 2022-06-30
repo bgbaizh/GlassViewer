@@ -1,5 +1,5 @@
 """
-
+要让读入的原子位置文件里的原子位置都在原来的胞里，别弄出负数或者在胞外的坐标，不然可能会有bug（比如计算pdf的时候），我不确定这个程序自动读入后，如果发现上述问题会不会都平移到原来的胞里
 
 """
 
@@ -93,7 +93,7 @@ class System(pc.System):
         pc.System.__init__(self)
 
     #iterator for atoms
-    def iter_atoms(self):
+    def iter_atoms(self):#self.natoms是real原子 ntotal是总原子
         """
         Iter over atoms
         """
@@ -138,14 +138,14 @@ class System(pc.System):
         """
         Atom access
         """
-        return self.get_atoms()
+        return self.get_atoms()#返回了real原子
 
     @atoms.setter
     def atoms(self, atoms):
         """
         Set atoms
         """
-        number_extendto=200
+        number_extendto=100
         if(len(atoms) < number_extendto):\
             #对于三斜和正交晶胞一起扩胞，尽可能使三个高相同。把内切球中的原子数扩到number_extendto
             height1=abs(np.dot(self.box[0],np.cross(self.box[1],self.box[2])))/np.linalg.norm(np.cross(self.box[1],self.box[2]))
@@ -193,7 +193,7 @@ class System(pc.System):
             '''
             
 
-        self.set_atoms(atoms)
+        self.set_atoms(atoms)#把real和ghost都塞进去，cpp会自动归类
 
     def add_atoms(self, atoms):
         """
@@ -343,8 +343,17 @@ class System(pc.System):
         
         hist = self.get_pairdistances(cut,partial,centertype,secondtype,histobins,histomin,threadnum)
         hist=np.array(hist)
-        delta=(cut-histomin)/histobins
         
+        #get box density
+        boxvecs = self.box #返回realbox
+        vol = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
+        nallatom = self.ntotal#real+ghost
+        nrealatom=self.natoms#real
+        rho = nrealatom/vol
+        
+        hist=hist*nrealatom/nallatom# 由于cpp采取扩胞的原子（real+ghost）进行运算，这里将缩放回最开始的原胞（real原子）
+        
+        delta=(cut-histomin)/histobins
         r=np.arange(histobins)*delta+histomin
         
         
@@ -354,21 +363,20 @@ class System(pc.System):
             distri=hist/float(delta)
             
 
-        #get box density
-        boxvecs = self.box
-        vol = abs(np.dot(np.cross(boxvecs[0], boxvecs[1]), boxvecs[2]))
-        nallatom = self.ntotal
-        nrealatom=self.natoms
-        rho = nrealatom/vol
+
         
-        Ncentertype=np.sum([1 for n in self.atoms if n.type == centertype])*nallatom/nrealatom
-        Nsecondtype=np.sum([1 for n in self.atoms if n.type == secondtype])*nallatom/nrealatom
+        
+        
+        #Ncentertype=np.sum([1 for n in self.atoms if n.type == centertype])*nallatom/nrealatom
+        #Nsecondtype=np.sum([1 for n in self.atoms if n.type == secondtype])*nallatom/nrealatom
+        Ncentertype=np.sum([1 for n in self.atoms if n.type == centertype])
+        Nsecondtype=np.sum([1 for n in self.atoms if n.type == secondtype])
         #now divide to get final value
         np.seterr(divide='ignore',invalid='ignore')
         if partial==False:
-            pdf = distri/(nallatom*4*np.pi*r*r*rho)
+            pdf = distri/(nrealatom*4*np.pi*r*r*rho)
         elif partial==True:
-            pdf = distri*nallatom/(Ncentertype*Nsecondtype*4*np.pi*r*r*rho)
+            pdf = distri*nrealatom/(Ncentertype*Nsecondtype*4*np.pi*r*r*rho)
         pdf=np.nan_to_num(pdf)
         return pdf, r
     def calculate_sf(self, pdf, r,precise): #precise=0 采用fft precise>0 在fft 的基础上更加细分q值，采用积分的方式，后者验证前者
@@ -431,6 +439,11 @@ class System(pc.System):
         delta=(histomax-histomin)/histobins
         theta=np.arange(histobins)*delta+histomin
         distri=hist/float(delta)
+        
+        nallatom = self.ntotal# 由于cpp采取扩胞的原子（real+ghost）进行运算，这里将缩放回最开始的原胞（real原子）
+        nrealatom=self.natoms#real
+        distri=distri/nallatom*nrealatom# 
+        
         Nisum=0
         for i in self.atoms:
             Ni=len(i.neighbors)
@@ -2154,7 +2167,7 @@ class System(pc.System):
 
         newatoms = []
         idstart = len(atoms) + 1
-
+        '''
         x1 = -reps[0]
         x2 = reps[0]+1
         y1 = -reps[1]
@@ -2164,7 +2177,17 @@ class System(pc.System):
         xs = 2*reps[0] + 1
         ys = 2*reps[1] + 1
         zs = 2*reps[2] + 1
+        '''
 
+        x1 = 0
+        x2 = 2*reps[0]+1
+        y1 = 0
+        y2 = 2*reps[1]+1
+        z1 = 0
+        z2 = 2*reps[2]+1
+        xs = 2*reps[0] + 1
+        ys = 2*reps[1] + 1
+        zs = 2*reps[2] + 1
 
         for i in range(x1, x2):
             for j in range(y1, y2):

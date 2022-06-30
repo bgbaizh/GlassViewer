@@ -102,10 +102,10 @@ class System{
             //int M[3]={0};
             //int N[3]={0};
             double Height[3]={0};
-            double iCrossj[3][3]={0};
+            double iCrossj[3][3]={{0,0,0},{0,0,0},{0,0,0}};
             double iCrossjnorm[3]={0};
             double kdotiCrossj[3]={0};
-            int index[3][3]={0,1,2,1,2,0,2,0,1};// 计算叉乘的时候，以角标k i j 为顺序 按照index数组的顺序进行计算
+            int index[3][3]={{0,1,2},{1,2,0},{2,0,1}};// 计算叉乘的时候，以角标k i j 为顺序 按照index数组的顺序进行计算
             double histlow_square;
             double cut_square;
             bool halftimes=false;
