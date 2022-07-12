@@ -4,7 +4,9 @@
 """
 
 
+import enum
 from math import dist
+from re import T
 
 from sqlalchemy import false
 import pyscal.traj_process as ptp
@@ -22,6 +24,7 @@ import gzip
 import io
 import pyscal.visualization as pv
 from scipy.fftpack import fft,ifft
+from sympy.physics.wigner import wigner_3j
 
 #------------------------------------------------------------------------------------------------------------
 """
@@ -90,6 +93,8 @@ class System(pc.System):
         self.neighbor_method = None
         self.ghosts_created = False
         self.actual_box = None
+        self.w=[]
+        self.aw=[]
         pc.System.__init__(self)
 
     #iterator for atoms
@@ -854,7 +859,45 @@ class System(pc.System):
             atom.vorovector = vorovector
         self.atoms = atoms
 
+    def calculate_w(self, w, averaged = False):
+        """Calculate the W_l value in BOO
+            Calculate_q must be executed before this function.
+        Args:
+            w (_type_): int or list of ints
+            A list of all l value for calculating W_l (from 2-12).
+            averaged (bool, optional): Use Averaged Q to calculate or not. Defaults to False.
+        Return:
+            no return
+        """
+        if isinstance(w, int):
+            ww = [w]
+        else:
+            ww = w
 
+        for wl in ww:
+            if not wl in range(2,13):
+                raise ValueError("value of w should be between 2 and 13")
+        if averaged==False:  
+            self.w=[[] for i in ww]              
+            for ith,i in enumerate(ww):
+                wignertensor=[[[float(wigner_3j(i,i,i,m1,m2,m3)) for m3 in range(-i,i+1)] for m2 in range(-i,i+1)]for m1 in range(-i,i+1)]
+                for atom in self.atoms:
+                    wtemp=0
+                    qlm=atom.get_qlm(i,False)
+                    ql=atom.get_q(i,False)
+                    wtemp=((4*np.pi/(2*i+1))**(3/2))*np.einsum('ijk,i,j,k->',wignertensor,qlm,qlm,qlm)/(ql**3)
+                    self.w[ith].append(wtemp)
+        elif averaged==True:  
+            self.aw=[[] for i in ww]              
+            for ith,i in enumerate(ww):
+                wignertensor=[[[float(wigner_3j(i,i,i,m1,m2,m3)) for m3 in range(-i,i+1)] for m2 in range(-i,i+1)]for m1 in range(-i,i+1)]
+                for atom in self.atoms:
+                    wtemp=0
+                    qlm=atom.get_qlm(i,True)
+                    ql=atom.get_q(i,True)
+                    wtemp=((4*np.pi/(2*i+1))**(3/2))*np.einsum('ijk,i,j,k->',wignertensor,qlm,qlm,qlm)/(ql**3)
+                    self.aw[ith].append(wtemp)
+        
     def calculate_q(self, q, averaged = False, only_averaged=False, condition=None, clear_condition=False):
         """
         Find the Steinhardt parameter q_l for all atoms.
