@@ -1661,7 +1661,7 @@ void System::QLM(int l,int m,double theta,double phi,double &realYLM, double &im
     if (m < 0) {
         YLM(l, abs(m), theta, phi, realYLM, imgYLM);
         realYLM = pow(-1.0,m)*realYLM;
-        imgYLM = pow(-1.0,m)*imgYLM;
+        imgYLM = pow(-1.0,m+1)*imgYLM;
     }
     else{
         YLM(l, m, theta, phi, realYLM, imgYLM);

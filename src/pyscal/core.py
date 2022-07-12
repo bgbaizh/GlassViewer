@@ -93,8 +93,8 @@ class System(pc.System):
         self.neighbor_method = None
         self.ghosts_created = False
         self.actual_box = None
-        self.w=[]
-        self.aw=[]
+        self.w=np.array([])
+        self.aw=np.array([])
         pc.System.__init__(self)
 
     #iterator for atoms
@@ -887,6 +887,7 @@ class System(pc.System):
                     ql=atom.get_q(i,False)
                     wtemp=((4*np.pi/(2*i+1))**(3/2))*np.einsum('ijk,i,j,k->',wignertensor,qlm,qlm,qlm)/(ql**3)
                     self.w[ith].append(wtemp)
+            self.w=np.real(np.array(self.w))
         elif averaged==True:  
             self.aw=[[] for i in ww]              
             for ith,i in enumerate(ww):
@@ -897,7 +898,7 @@ class System(pc.System):
                     ql=atom.get_q(i,True)
                     wtemp=((4*np.pi/(2*i+1))**(3/2))*np.einsum('ijk,i,j,k->',wignertensor,qlm,qlm,qlm)/(ql**3)
                     self.aw[ith].append(wtemp)
-        
+            self.aw=np.real(np.array(self.aw))
     def calculate_q(self, q, averaged = False, only_averaged=False, condition=None, clear_condition=False):
         """
         Find the Steinhardt parameter q_l for all atoms.
