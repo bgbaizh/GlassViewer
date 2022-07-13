@@ -79,11 +79,11 @@ class System{
         void get_all_neighbors_normal();
         void process_neighbor(int, int);
         int get_all_neighbors_sann(double);
-        int get_all_neighbors_bynumber(double, int, int);
+        int get_all_neighbors_bynumber(double, int, int,vector<int> atomlist = vector<int>());
         int get_neighbors_from_temp(int);
         int get_all_neighbors_adaptive(double, int, double);
         void get_all_neighbors_voronoi();
-        void reset_all_neighbors();
+        void reset_all_neighbors(vector<int> atomlist = vector<int>());
         void reset_main_neighbors();        
         double get_abs_distance(int,int,double&,double&,double&);
         double get_abs_distance(Atom , Atom );
@@ -131,8 +131,8 @@ class System{
         void set_up_cells();
         vector<int> cell_periodic(int, int, int);
         void get_all_neighbors_cells();
-        void get_temp_neighbors_cells();
-        void get_temp_neighbors_brute();
+        void get_temp_neighbors_cells(vector<int> atomlist = vector<int>());
+        void get_temp_neighbors_brute(vector<int> atomlist = vector<int>());
         void store_neighbor_info();
         void set_atom_cutoff(double);
 
@@ -148,8 +148,8 @@ class System{
         vector<int> rq_backup;
         void set_reqd_qs(vector<int>);
         void set_reqd_aqs(vector<int>);
-        void calculate_q(vector <int>);
-        void calculate_aq(vector <int>);
+        void calculate_q(vector <int>,vector <int> atomlist);
+        void calculate_aq(vector <int>,vector <int> atomlist);
         double dfactorial(int ,int );
         void convert_to_spherical_coordinates(double , double , double , double &, double &, double &);
         double PLM(int, int, double);

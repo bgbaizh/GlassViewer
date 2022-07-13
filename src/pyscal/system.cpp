@@ -449,8 +449,18 @@ vector<double> System::get_distance_vector(Atom atom1 , Atom atom2 ){
 }
 
 
-void System::reset_all_neighbors(){
-    for (int ti = 0;ti<nop;ti++){
+void System::reset_all_neighbors(vector<int> atomlist){
+    int ti=0;
+    if (atomlist.size()==0)
+    {
+        atomlist.resize(nop); 
+        for (int i = 0; i < nop; ++i)
+        {
+            atomlist[i] = i; 
+        }
+    }
+    for (vector<int>::iterator it = atomlist.begin();it != atomlist.end();it++){
+        ti = *it;
 
         atoms[ti].n_neighbors=0;
         atoms[ti].temp_neighbors.clear();
@@ -659,10 +669,11 @@ void System::pairditancethread(int atomsstart,int atomsfinish, int threadid,Syst
     if (s->halftimes == true) {
         for (int ti = atomsstart; ti < atomsfinish; ti++) {
             for (int tj = ti + 1; tj < sys->nop; tj++) {
-                sys->get_abs_distance(ti, tj, diffx, diffy, diffz);
-                d_square = diffx * diffx + diffy * diffy + diffz * diffz;
-                if (d_square <= s->cut_square && d_square >= s->histlow_square) {
-                    d = pow(d_square, 0.5);
+                d=sys->get_abs_distance(ti, tj, diffx, diffy, diffz);
+                //d_square = diffx * diffx + diffy * diffy + diffz * diffz;
+                //if (d_square <= s->cut_square && d_square >= s->histlow_square) {
+                if (d <= s->cut && d >= s->histlow) {
+                    //d = pow(d_square, 0.5);
                     
                     s->resthread[threadid][floor((d - s->histlow) / s->deltacut)]++;
                     
@@ -1077,22 +1088,50 @@ void System::process_neighbor(int ti, int tj){
 To increase the speed of the other methods, we need some functions using cells and
 otheriwse which adds atoms to the temp_neighbors list
 */
-void System::get_temp_neighbors_brute(){
+void System::get_temp_neighbors_brute(vector<int> atomlist){
 
     //reset voronoi flag
 
     double d;
     double diffx,diffy,diffz;
-
-    for (int ti=0; ti<nop; ti++){
-        for (int tj=ti; tj<nop; tj++){
-            if(ti==tj) { continue; }
-            d = get_abs_distance(ti,tj,diffx,diffy,diffz);
-            if (d <= neighbordistance){
-                datom x = {d, tj};
-                atoms[ti].temp_neighbors.emplace_back(x);
-                datom y = {d, ti};
-                atoms[tj].temp_neighbors.emplace_back(y);
+    int ti=0;
+    bool halftime;
+    if (atomlist.size()==0)
+    {
+        atomlist.resize(nop); 
+        for (int i = 0; i < nop; ++i)
+        {
+            atomlist[i] = i; 
+        }
+        halftime=true;
+    }
+    else{
+        halftime=false;
+    }
+    for (vector<int>::iterator it = atomlist.begin();it != atomlist.end();it++){
+        ti = *it;
+        if(halftime){
+            for (int tj=ti; tj<nop; tj++){
+                if(ti==tj) { continue; }
+                d = get_abs_distance(ti,tj,diffx,diffy,diffz);
+                if (d <= neighbordistance){
+                    datom x = {d, tj};
+                    atoms[ti].temp_neighbors.emplace_back(x);
+                    datom y = {d, ti};
+                    atoms[tj].temp_neighbors.emplace_back(y);
+                }
+            }
+        }
+        else{
+            for (int tj=0; tj<nop; tj++){
+                if(ti==tj) { continue; }
+                d = get_abs_distance(ti,tj,diffx,diffy,diffz);
+                if (d <= neighbordistance){
+                    datom x = {d, tj};
+                    atoms[ti].temp_neighbors.emplace_back(x);
+                    //datom y = {d, ti};
+                    //atoms[tj].temp_neighbors.emplace_back(y);
+                }
             }
         }
     }
@@ -1103,48 +1142,87 @@ void System::get_temp_neighbors_brute(){
 Cells should only be used when the system has a minimum size - in this case,
 about 2000 atoms.
 */
-void System::get_temp_neighbors_cells(){
+void System::get_temp_neighbors_cells(vector<int> atomlist){
 
     //first create cells
     set_up_cells();
 
     int maincell, subcell;
     int ti, tj;
+    int i;
     double d;
     double diffx,diffy,diffz;
+    bool halftime;
+    vector<int> cellforatom;
+    cellforatom.resize(nop);
+    if (atomlist.size()==0)
+    {
+        atomlist.resize(nop); 
+        for (int i = 0; i < nop; ++i)
+        {
+            atomlist[i] = i; 
+        }
+        halftime=true;
+    }
+    else{
+        halftime=false;
+    }
+    for(int i=0; i<total_cells; i++){
+        for(int mi=0; mi<cells[i].members.size(); mi++)
+        {
+            ti = cells[i].members[mi];
+            cellforatom[ti]=i;
+        }
+    }
 
     //now loop to find distance
-    for(int i=0; i<total_cells; i++){
+    //for(int i=0; i<total_cells; i++){
         //now go over the neighbor cells
         //for each member in cell i
-        for(int mi=0; mi<cells[i].members.size(); mi++){
+        //for(int mi=0; mi<cells[i].members.size(); mi++){
             //now go through the neighbors
-            ti = cells[i].members[mi];
+            //ti = cells[i].members[mi];
+        for (vector<int>::iterator it = atomlist.begin();it != atomlist.end();it++){
+            ti = *it;
+            i=cellforatom[ti];
             for(int j=0 ; j<cells[i].neighbor_cells.size(); j++){
                //loop through members of j
                subcell = cells[i].neighbor_cells[j];
                for(int mj=0; mj<cells[subcell].members.size(); mj++){
-                  //now we have mj -> members/compare with
-                  tj = cells[subcell].members[mj];
-                  //compare ti and tj and add
-                  if (ti < tj){
-                      d = get_abs_distance(ti,tj,diffx,diffy,diffz);
-                      if (d < neighbordistance){
-                        datom x = {d, tj};
-                        atoms[ti].temp_neighbors.emplace_back(x);
-                        datom y = {d, ti};
-                        atoms[tj].temp_neighbors.emplace_back(y);
-                      }
-                  }
+                    //now we have mj -> members/compare with
+                    tj = cells[subcell].members[mj];
+                    //compare ti and tj and add
+                    if(halftime){
+                        if (ti < tj){
+                            d = get_abs_distance(ti,tj,diffx,diffy,diffz);
+                            if (d < neighbordistance){
+                                datom x = {d, tj};
+                                atoms[ti].temp_neighbors.emplace_back(x);
+                                datom y = {d, ti};
+                                atoms[tj].temp_neighbors.emplace_back(y);
+                            }
+                        }
+                    }
+                    else{
+                        if (ti != tj){
+                            d = get_abs_distance(ti,tj,diffx,diffy,diffz);
+                            if (d < neighbordistance){
+                                datom x = {d, tj};
+                                atoms[ti].temp_neighbors.emplace_back(x);
+                                //datom y = {d, ti};
+                                //atoms[tj].temp_neighbors.emplace_back(y);
+                            }
+                        }
+                    }
                }
 
             }
 
         }
-    }
+    //}
 
 }
-int System::get_all_neighbors_bynumber(double prefactor, int nns, int assign){
+int System::get_all_neighbors_bynumber(double prefactor, int nns, int assign,vector<int> atomlist){
     /*
     A new neighbor algorithm that finds a specified number of 
     neighbors for each atom. But ONLY TEMP neighbors
@@ -1166,7 +1244,15 @@ int System::get_all_neighbors_bynumber(double prefactor, int nns, int assign){
         //double prefactor = 1.21;
     double summ;
     double boxvol;
-
+    int ti=0;
+    if (atomlist.size()==0)
+    {
+        atomlist.resize(nop); 
+        for (int i = 0; i < nop; ++i)
+        {
+            atomlist[i] = i; 
+        }
+    }
     //some guesswork here
     //find the box volumes
     if (triclinic==1){
@@ -1198,12 +1284,13 @@ int System::get_all_neighbors_bynumber(double prefactor, int nns, int assign){
     neighbordistance = guessdist;
 
     if (usecells){
-        get_temp_neighbors_cells();
+        get_temp_neighbors_cells(atomlist);
     }
     else{
-        get_temp_neighbors_brute();
+        get_temp_neighbors_brute(atomlist);
     }
-    for (int ti=0; ti<nop; ti++){
+    for (vector<int>::iterator it = atomlist.begin();it != atomlist.end();it++){
+        ti = *it;
         if (atoms[ti].temp_neighbors.size() < nns){
             return 0;
         }
@@ -1699,7 +1786,7 @@ void System::calculate_complexQLM_6(){
 }
 
 //calculation of any complex qval
-void System::calculate_q(vector <int> qs){
+void System::calculate_q(vector <int> qs,vector <int> atomlist){
 
     //set_reqd_qs(qs);
 
@@ -1709,6 +1796,7 @@ void System::calculate_q(vector <int> qs){
     double realYLM,imgYLM;
     int q;
     double summ;
+    int ti=0;
 
     //first make space in atoms for the number of qs needed - assign with null values
     /*
@@ -1731,8 +1819,9 @@ void System::calculate_q(vector <int> qs){
     //q2 will be in q0 pos and so on
     double weightsum;
     // nop = parameter.nop;
-    for (int ti= 0;ti<nop;ti++){
-
+    //for (int ti= 0;ti<nop;ti++){
+    for (vector<int>::iterator it = atomlist.begin();it != atomlist.end();it++){
+        ti = *it;
         nn = atoms[ti].n_neighbors;
         //for(int tq=0;tq<lenqs;tq++){
         for(int tq=0;tq<qs.size();tq++){
@@ -1777,7 +1866,7 @@ void System::calculate_q(vector <int> qs){
 
 
 //calculation of any complex aqvalb
-void System::calculate_aq(vector <int> qs){
+void System::calculate_aq(vector <int> qs,vector <int> atomlist){
 
     //nn = number of neighbors
     int nn;
@@ -1786,13 +1875,16 @@ void System::calculate_aq(vector <int> qs){
     int q;
     double summ;
     int nns;
+    int ti=0;
 
     //if (!qsfound) { calculate_q(qs); }
     //note that the qvals will be in -2 pos
     //q2 will be in q0 pos and so on
 
     // nop = parameter.nop;
-    for (int ti= 0;ti<nop;ti++){
+    //for (int ti= 0;ti<nop;ti++){
+    for (vector<int>::iterator it = atomlist.begin();it != atomlist.end();it++){
+        ti = *it;
 
         nn = atoms[ti].n_neighbors;
 

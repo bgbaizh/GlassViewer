@@ -534,6 +534,16 @@ class System(pc.System):
         else:
             return self.get_absdistance(atom1, atom2)
 
+    def find_neighbors_bynumber_atomlist(self, threshold=2,nmax=12,atomlist=[]):
+        if threshold < 1:
+            raise ValueError("value of threshold should be at least 1.00")
+        if atomlist==[]:
+            raise ValueError("atomlist could not be empty, if you want to calculate all atoms, please use 'find_neighbors'")
+        self.usecells =  (len(self.atoms) > 4000)
+        self.reset_allneighbors(atomlist)
+        finished = self.get_all_neighbors_bynumber(threshold, nmax, True,atomlist)
+        if not finished:
+            raise RuntimeError("Could not find enough neighbors - try increasing threshold")
 
     def find_neighbors(self, method='cutoff', cutoff=None, threshold=2, filter=None,
                                             voroexp=1, padding=1.2, nlimit=6, cells=False,
@@ -637,7 +647,7 @@ class System(pc.System):
 
         """
         #first reset all neighbors
-        self.reset_allneighbors()
+        self.reset_allneighbors([])
         self.filter = 0
 
         if filter == 'type':
@@ -660,7 +670,7 @@ class System(pc.System):
                         #threshold value is probably too low
                         #try increasing threshold
                         warnings.warn("Could not find sann cutoff. trying with a higher threshold", RuntimeWarning)
-                        self.reset_allneighbors()
+                        self.reset_allneighbors([])
                         newfinished = self.get_all_neighbors_sann(threshold*i)
                         if newfinished:
                             finallydone = True
@@ -693,7 +703,7 @@ class System(pc.System):
                 raise ValueError("value of threshold should be at least 1.00")
 
             self.usecells =  (len(self.atoms) > 4000)
-            finished = self.get_all_neighbors_bynumber(threshold, nmax, assign_neighbor)
+            finished = self.get_all_neighbors_bynumber(threshold, nmax, assign_neighbor,[])
             if not finished:
                 raise RuntimeError("Could not find enough neighbors - try increasing threshold")
 
@@ -763,7 +773,7 @@ class System(pc.System):
         It is used automatically when neighbors are recalculated.
 
         """
-        self.reset_allneighbors()
+        self.reset_allneighbors([])
         self.neighbors_found = False
 
     def calculate_vorovector(self, edge_cutoff=0.05, area_cutoff=0.01, edge_length=False):
@@ -899,7 +909,7 @@ class System(pc.System):
                     wtemp=((4*np.pi/(2*i+1))**(3/2))*np.einsum('ijk,i,j,k->',wignertensor,qlm,qlm,qlm)/(ql**3)
                     self.aw[ith].append(wtemp)
             self.aw=np.real(np.array(self.aw))
-    def calculate_q(self, q, averaged = False, only_averaged=False, condition=None, clear_condition=False):
+    def calculate_q(self, q, averaged = False, only_averaged=False, condition=None, clear_condition=False,atomlist=[]):
         """
         Find the Steinhardt parameter q_l for all atoms.
 
@@ -1002,18 +1012,25 @@ class System(pc.System):
             for atom in atoms:
                 atom.condition = 0
             self.atoms = atoms
-
+        if atomlist==[]:
+            atomlist=range(self.natoms)
+        else:
+            for i in atomlist:
+                if i>=self.natoms:
+                    raise ValueError("one element of atomlist >= natoms")
+                
         if not only_averaged:
-            self.ccalculate_q(qq)
+            self.ccalculate_q(qq,atomlist)
 
         if averaged or only_averaged:
-            self.ccalculate_aq(qq)
+            self.ccalculate_aq(qq,atomlist)
 
 
     def find_solids(self, bonds=0.5, threshold=0.5, avgthreshold=0.6, 
                           cluster=True, q=6, cutoff=0, right=True):
         """
         Distinguish solid and liquid atoms in the system.
+        calculate_q must be executed before this
 
         Parameters
         ----------
@@ -1121,7 +1138,7 @@ class System(pc.System):
         #Set the vlaue of q
         self.solidq = q
         #first calculate q
-        self.ccalculate_q([q])
+        #self.ccalculate_q([q])这里禁止了调用calculate_q 因此calculate_q必须在find_solid前调用
         #self.calculate_q(6)
         #calculate solid neighs
         self.set_nucsize_parameters(bonds, threshold, avgthreshold)
