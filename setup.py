@@ -24,12 +24,14 @@ setup(
             "pyscal.catom",
             ["src/pyscal/atom.cpp", "src/pyscal/atom_binding.cpp"],
             language='c++',
+            cxx_std=17,
             include_dirs=['lib/voro++']
         ),
         Pybind11Extension(
             "pyscal.csystem",
             ["src/pyscal/system.cpp", "src/pyscal/system_binding.cpp", "src/pyscal/atom.cpp", "lib/voro++/voro++.cc"],
             language='c++',
+            cxx_std=17,
             include_dirs=['lib/voro++']
         ),
     ],
