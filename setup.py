@@ -18,7 +18,7 @@ setup(
     # and nowhere else
     package_dir={'':'src'},
     # add an extension module named 'python_cpp_example' to the package
-    headers=["src/pyscal/atom.h", "src/pyscal/system.h", "lib/voro++/voro++.hh"],
+    headers=["src/pyscal/atom.h", "src/pyscal/system.h", "lib/voro++/voro++.hh","lib/wignerSymbols/include/wignerSymbols.h",'lib/fftw3/fftw3.h'],
     ext_modules=[
         Pybind11Extension(
             "pyscal.catom",
@@ -28,9 +28,11 @@ setup(
         ),
         Pybind11Extension(
             "pyscal.csystem",
-            ["src/pyscal/system.cpp", "src/pyscal/system_binding.cpp", "src/pyscal/atom.cpp", "lib/voro++/voro++.cc"],
+            ["src/pyscal/system.cpp", "src/pyscal/system_binding.cpp", "src/pyscal/atom.cpp", "lib/voro++/voro++.cc","lib/wignerSymbols/src/wignerSymbols-cpp.cpp"],
             language='c++',
-            include_dirs=['lib/voro++']
+            include_dirs=['lib/voro++','lib/wignerSymbols/include','lib/fftw3'],
+            library_dirs=['lib/fftw3'],
+            libraries=['libfftw3-3'],
         ),
     ],
     # add custom build_ext command
@@ -41,5 +43,6 @@ setup(
     install_requires=['numpy', 'ase', 'plotly', 'ipywidgets'],
     classifiers=[
         'Programming Language :: Python :: 3'
-    ]
+    ],
+    package_data={'pyscal':['libfftw3-3.dll']}
 )

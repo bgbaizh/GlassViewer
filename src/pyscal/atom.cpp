@@ -33,7 +33,10 @@ Atom::Atom( vector<double> pos, int idd, int typ){
     avg_entropy = 0;
     energy = 0;
     avg_energy = 0;
-
+    wnorm.resize(11);
+    awnorm.resize(11);
+    w.resize(11);
+    aw.resize(11);
 
     for (int tn = 0; tn<MAXNUMBEROFNEIGHBORS; tn++){
         neighbors[tn] = -1;
@@ -51,7 +54,10 @@ Atom::Atom( vector<double> pos, int idd, int typ){
     for (int tn = 0; tn<11; tn++){
         q[tn] = -1;
         aq[tn] = -1;
-
+        w[tn] = -1;
+        aw[tn] = -1;
+        wnorm[tn] = -1;
+        awnorm[tn] = -1;
         for (int tnn =0; tnn<25; tnn++){
             realq[tn][tnn] = -1;
             imgq[tn][tnn] = -1;

@@ -87,9 +87,22 @@ PYBIND11_MODULE(csystem, m) {
         .def("cget_aqvals",&System::gaqvals)
         .def("ccalculate_q",&System::calculate_q)
         .def("ccalculate_aq",&System::calculate_aq)
+        .def("ccalculate_w", &System::calculate_w)
         .def("ccalculate_disorder",&System::calculate_disorder)
         .def("ccalculate_avg_disorder",&System::find_average_disorder)
-
+        //---------------------------------------------------
+        // Methods for BOO_Global_statics
+        //---------------------------------------------------
+        .def_readwrite("bondpos", &System::bondpos)
+        .def_readwrite("bondvec", &System::bondvec)
+        .def_readwrite("bondqlm", &System::bondqlm)
+        .def_readwrite("global_Qlm", &System::global_Qlm)
+        .def_readwrite("global_Ql", &System::global_Ql)
+        .def_readwrite("global_Wl", &System::global_Wl)
+        .def_readwrite("global_Wlnorm", &System::global_Wlnorm)
+        .def("GlobalBOO_Bond", &System::GlobalBOO_Bond)
+        .def("GlobalBOO_Sum", &System::GlobalBOO_Sum)
+        .def("GlobalBOO_CF", &System::GlobalBOO_CF)
         //-----------------------------------------------------
         // Solids and Clustering methods
         //-----------------------------------------------------

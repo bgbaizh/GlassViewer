@@ -869,7 +869,7 @@ class System(pc.System):
             atom.vorovector = vorovector
         self.atoms = atoms
 
-    def calculate_w(self, w, averaged = False):
+    def calculate_w(self, w, averaged = False,atomlist=[]):
         """Calculate the W_l value in BOO
             Calculate_q must be executed before this function.
         Args:
@@ -887,7 +887,14 @@ class System(pc.System):
         for wl in ww:
             if not wl in range(2,13):
                 raise ValueError("value of w should be between 2 and 13")
-        if averaged==False:  
+        if atomlist==[]:
+            atomlist=range(self.natoms)
+        else:
+            for i in atomlist:
+                if i>=self.natoms:
+                    raise ValueError("one element of atomlist >= natoms")
+        self.ccalculate_w(ww,atomlist,averaged)   
+        '''if averaged==False:  
             self.w=[[] for i in ww]              
             for ith,i in enumerate(ww):
                 wignertensor=[[[float(wigner_3j(i,i,i,m1,m2,m3)) for m3 in range(-i,i+1)] for m2 in range(-i,i+1)]for m1 in range(-i,i+1)]
@@ -908,7 +915,8 @@ class System(pc.System):
                     ql=atom.get_q(i,True)
                     wtemp=((4*np.pi/(2*i+1))**(3/2))*np.einsum('ijk,i,j,k->',wignertensor,qlm,qlm,qlm)/(ql**3)
                     self.aw[ith].append(wtemp)
-            self.aw=np.real(np.array(self.aw))
+            self.aw=np.real(np.array(self.aw))'''
+        
     def calculate_q(self, q, averaged = False, only_averaged=False, condition=None, clear_condition=False,atomlist=[]):
         """
         Find the Steinhardt parameter q_l for all atoms.

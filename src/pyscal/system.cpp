@@ -1785,6 +1785,408 @@ void System::calculate_complexQLM_6(){
     }
 }
 
+void System::GlobalBOO_Bond(vector <int> atomlist)
+{
+    vector<double>bondpostemp(3, 0),bondvectemp(3,0);
+    int nn,q,ti=0;
+    bondpos.clear();
+    bondvec.clear();
+    bondpos.resize(0);
+    bondvec.resize(0);
+    for (vector<int>::iterator it = atomlist.begin(); it != atomlist.end(); it++) {
+            ti = *it;
+            nn = atoms[ti].n_neighbors;
+        for (int ci = 0; ci < nn; ci++) {
+            if(atoms[ti].neighbors[ci]> ti){//对每对键只算一次
+                if (atoms[ti].condition != atoms[atoms[ti].neighbors[ci]].condition) continue;
+                bondpostemp= vector<double>(3, 0);
+                bondvectemp = vector<double>(3, 0);
+
+                bondpostemp[0] = (atoms[ti].posx + atoms[atoms[ti].neighbors[ci]].posx) / 2;
+                bondpostemp[1] = (atoms[ti].posy + atoms[atoms[ti].neighbors[ci]].posy) / 2;
+                bondpostemp[2] = (atoms[ti].posz + atoms[atoms[ti].neighbors[ci]].posz) / 2;
+
+                bondvectemp[0] = (atoms[ti].posx - atoms[atoms[ti].neighbors[ci]].posx) ;
+                bondvectemp[1] = (atoms[ti].posy - atoms[atoms[ti].neighbors[ci]].posy) ;
+                bondvectemp[2] = (atoms[ti].posz - atoms[atoms[ti].neighbors[ci]].posz) ;
+                bondpos.emplace_back(bondpostemp);
+                bondvec.emplace_back(bondvectemp);
+            }
+        }
+    }
+ }
+ 
+ 
+ 
+ 
+void  System::GlobalBOO_Sum(vector <int>qs){
+    vector<vector<vector<double>>> res;
+    complex<double>Qlm1, Qlm2, Qlm3,Complexsum;
+    int nn, q;
+    double realall = 0, imgall = 0, weightsum = 0, realYLM, imgYLM;
+    double itheta = 0, iphi = 0,d=0,summ=0, wig=0;
+    global_Qlm.clear();
+    global_Qlm.resize(2);
+    global_Ql.clear();
+    global_Ql.resize(0);
+    global_Wl.clear();
+    global_Wl.resize(0);
+    global_Wlnorm.clear();
+    global_Wlnorm.resize(0);
+    for (int tq = 0; tq < qs.size(); tq++) {
+        global_Qlm[0].emplace_back(vector<double>());
+        global_Qlm[1].emplace_back(vector<double>());
+        global_Ql.emplace_back(0);
+        global_Wl.emplace_back(0);
+        global_Wlnorm.emplace_back(0);
+        q = qs[tq];
+        summ = 0;
+        for (int mi = -q; mi < q + 1; mi++) {
+            global_Qlm[0][tq].emplace_back(0);
+            global_Qlm[1][tq].emplace_back(0);
+            for (int i = 0; i < bondvec.size();i++) {
+                d = pow(bondvec[i][0] * bondvec[i][0] + bondvec[i][1] * bondvec[i][1] + bondvec[i][2] * bondvec[i][2], 0.5);
+                itheta = acos(bondvec[i][2] / d);//acos z/r
+                iphi= atan2(bondvec[i][1], bondvec[i][0]);//atan2(y,x)
+                QLM(q, mi, itheta, iphi, realYLM, imgYLM);
+                //realti += atoms[ti].neighborweight[ci] * realYLM;
+                //imgti += atoms[ti].neighborweight[ci] * imgYLM;
+                global_Qlm[0][tq][mi + q] += realYLM;
+                global_Qlm[1][tq][mi + q] += imgYLM;
+                weightsum += 1;
+            }
+            global_Qlm[0][tq][mi + q] /= float(weightsum);
+            global_Qlm[1][tq][mi + q] /= float(weightsum);
+            weightsum = 0;
+            summ += global_Qlm[0][tq][mi + q] * global_Qlm[0][tq][mi + q] + global_Qlm[1][tq][mi + q] * global_Qlm[1][tq][mi + q];
+        }
+        summ = pow(((4.0 * PI / (2 * q + 1)) * summ), 0.5);
+        global_Ql[tq] = summ;
+        Complexsum = 0;
+        for (int m1 = -q; m1 < q + 1; m1++) {
+            for (int m2 = -q; m2 < q + 1; m2++) {
+                for (int m3 = -q; m3 < q + 1; m3++) {
+                    if (m1 + m2 + m3 == 0) {
+                        wig=WignerSymbols::wigner3j(q,q,q,m1,m2,m3);
+                        
+                        Qlm1= global_Qlm[0][tq][m1 + q] +global_Qlm[1][tq][m1 + q] *1i;
+                        Qlm2= global_Qlm[0][tq][m2 + q] +global_Qlm[1][tq][m2 + q]*1i;
+                        Qlm3= global_Qlm[0][tq][m3 + q] +global_Qlm[1][tq][m3 + q]*1i;
+                        Complexsum += wig*Qlm1*Qlm2*Qlm3;
+
+                    }
+                }
+            }
+        }
+        global_Wl[tq] = Complexsum.real();
+        global_Wlnorm[tq] = Complexsum.real() / pow(global_Ql[tq], 3) * pow(4 * PI / (2 * q + 1), 3.0 / 2.0);
+    }
+}
+vector<vector<double>> System::GlobalBOO_CF(vector <int>qs, double cut, int histnum, double histlow,bool norm,int n1,int n2,int n3,bool ffton){
+    //Initialation
+    complex<double>Qlm_a1, Qlm_a2, Complexsum, G0temp;
+    double dx = boxx / n1, dy = boxy / n2, dz = boxz / n3;
+    double dV = dx * dy * dz;
+    double d, diffx, diffy, diffz;
+    int q, ti = 0;
+    double realall = 0, imgall = 0, weightsum = 0, realYLM, imgYLM;
+    double deltacut = (cut - histlow) / histnum;
+
+    vector<double> G0(histnum,0);
+    vector<complex<double>> G0tempQ;
+    double y0 = pow((1 / (4 * PI)), 0.5);
+    G0tempQ.resize(bondpos.size(), y0);
+
+    vector<vector<double>> res;
+    vector<int> rescount(histnum, 0);
+    for (int tq = 0; tq < qs.size(); tq++) {
+        res.emplace_back(vector<double>(histnum, 0));
+    }
+
+    //calculate Qlm for each bond.
+    vector<vector<vector<complex<double>>>> tempQ;
+    tempQ.resize(bondpos.size());
+    for (int a1 = 0; a1 < bondpos.size(); a1++) {
+        tempQ[a1].resize(qs.size());
+        for (int tq = 0; tq < qs.size(); tq++) {
+            q = qs[tq];
+            tempQ[a1][tq].resize(2 * q + 1);
+            for (int mi = -q; mi < q + 1; mi++) {
+                double d1 = pow(bondvec[a1][0] * bondvec[a1][0] + bondvec[a1][1] * bondvec[a1][1] + bondvec[a1][2] * bondvec[a1][2], 0.5);
+                double itheta1 = acos(bondvec[a1][2] / d1);//acos z/r
+                double iphi1 = atan2(bondvec[a1][1], bondvec[a1][0]);//atan2(y,x)
+                QLM(q, mi, itheta1, iphi1, realYLM, imgYLM);
+                tempQ[a1][tq][mi+q] = realYLM + imgYLM * 1i;
+            }
+        }
+    }
+    if (ffton) {
+        complex<double>* fftin = (complex<double>*)fftw_malloc((sizeof(fftw_complex) * n1 * n2 * n3));
+        complex<double>* fftout = (complex<double>*)fftw_malloc((sizeof(fftw_complex) * n1 * n2 * n3));
+        fftw_plan fft = fftw_plan_dft_3d(n1, n2, n3, (fftw_complex*)fftin, (fftw_complex*)fftout, FFTW_FORWARD, FFTW_ESTIMATE);
+        fftw_plan ifft = fftw_plan_dft_3d(n1, n2, n3, (fftw_complex*)fftout, (fftw_complex*)fftin, FFTW_BACKWARD, FFTW_ESTIMATE);
+        for (int i = 0; i < n1 * n2 * n3; i++) {
+            fftin[i] = 0;
+            fftout[i] = 0;
+        }
+
+        //calculate the histbin number for each fft grid point.
+        vector<vector<vector<int>>> gridtohist;
+        gridtohist.resize(n1);
+        for (int i = 0; i < n1; i++) {
+            gridtohist[i].resize(n2);
+            for (int j = 0; j < n2; j++) {
+                gridtohist[i][j].resize(n3);
+                for (int k = 0; k < n3; k++) {
+                    diffx = i * dx;
+                    diffy = j * dy;
+                    diffz = k * dz;
+                    d = sqrt(diffx * diffx + diffy * diffy + diffz * diffz);
+                    if (d <= cut && d >= histlow) {
+                        gridtohist[i][j][k] = floor((d - histlow) / deltacut);
+                    }
+                    else {
+                        gridtohist[i][j][k] = -1;
+                    }
+                }
+            }
+        }
+
+        //use fft and fft-grid to calculate Qlm correlation function
+        for (int tq = 0; tq < qs.size(); tq++) {
+            q = qs[tq];
+            for (int mi = -q; mi < q + 1; mi++) {
+                for (int i = 0; i < n1 * n2 * n3; i++) {
+                    fftin[i] = 0;
+                    fftout[i] = 0;
+                }
+                for (int a1 = 0; a1 < bondpos.size(); a1++) {
+                    int ix = ((int)round(bondpos[a1][0] / dx)) % n1;
+                    int iy = ((int)round(bondpos[a1][1] / dy)) % n2;
+                    int iz = ((int)round(bondpos[a1][2] / dz)) % n3;
+                    if (ix < 0) { ix += n1; }
+                    if (iy < 0) { iy += n2; }
+                    if (iz < 0) { iz += n3; }
+                    fftin[ix * n2 * n3 + iy * n3 + iz] += tempQ[a1][tq][mi + q];
+                }
+                fftw_execute(fft);
+                for (int i = 0; i < n1 * n2 * n3; i++) {
+                    fftout[i] = fftout[i] * conj(fftout[i]);
+                }
+                for (int i = 0; i < n1 * n2 * n3; i++) {
+                    fftin[i] = 0;
+                    //fftout[i] = 0;
+                }
+                fftw_execute(ifft);
+                for (int i = 0; i < n1 * n2 * n3; i++) {
+                    fftin[i] = fftin[i].real() / n1 / n2 / n3;
+                }
+                for (int i = 0; i < n1; i++) {
+                    for (int j = 0; j < n2; j++) {
+                        for (int k = 0; k < n3; k++) {
+
+                            if (gridtohist[i][j][k] > 0) {
+                                res[tq][gridtohist[i][j][k]] += fftin[i * n2*n3 + j * n3 + k].real();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //use fft and fft-grid to calculate Q00 correlation function(G0) and also make the count for each histogram bin.
+        for (int i = 0; i < n1 * n2 * n3; i++) {
+            fftin[i] = 0;
+            fftout[i] = 0;
+        }
+        for (int a1 = 0; a1 < bondpos.size(); a1++) {
+            int ix = ((int)round(bondpos[a1][0] / dx)) % n1;
+            int iy = ((int)round(bondpos[a1][1] / dy)) % n2;
+            int iz = ((int)round(bondpos[a1][2] / dz)) % n3;
+            if (ix < 0) { ix += n1; }
+            if (iy < 0) { iy += n2; }
+            if (iz < 0) { iz += n3; }
+            fftin[ix * n2*n3 + iy * n3 + iz] += G0tempQ[a1];
+        }
+        fftw_execute(fft);
+        for (int i = 0; i < n1 * n2 * n3; i++) {
+            fftout[i] = fftout[i] * conj(fftout[i]);
+        }
+        for (int i = 0; i < n1 * n2 * n3; i++) {
+            fftin[i] = 0;
+            //fftout[i] = 0;
+        }
+        fftw_execute(ifft);
+        for (int i = 0; i < n1 * n2 * n3; i++) {
+            fftin[i] = fftin[i].real() / n1 / n2 / n3;
+        }
+        for (int i = 0; i < n1; i++) {
+            for (int j = 0; j < n2; j++) {
+                for (int k = 0; k < n3; k++) {
+                    if (gridtohist[i][j][k] > 0) {
+                        G0[gridtohist[i][j][k]] += fftin[i * n2*n3 + j * n3 + k].real();
+                        //G0[gridtohist[i][j][k]] += 1;
+                        rescount[gridtohist[i][j][k]]++;
+                    }
+                }
+            }
+        }
+        //post-process the data
+        for (int i = 0; i < histnum; i++) {
+
+            //G0[i] = G0[i];//正常应该再乘dV*4PI/rescount但是和下面的消掉了
+            //G0[i] *= 4 * PI;
+            for (int j = 0; j < qs.size(); j++)
+            {
+                q = qs[j];
+                //res[j][i] = res[j][i];
+                res[j][i] /= (2 * q + 1);
+                if (norm)
+                {
+                    res[j][i] /= G0[i];//res 和G0 的dV*4PI/rescount彼此消掉。
+                }
+                else {
+                    res[j][i] *= dV * 4 * PI / rescount[i];//这个系数对不对我也不知道，可能还跟/ bondpos.size()有关
+                    //res[j][i] = G0[i]/rescount[i];
+                }
+                if (i == 0) {
+                    res[j][0] = 0;
+                }
+            }
+        }
+        fftw_free(fftin);
+        fftw_free(fftout);
+        fftw_destroy_plan(fft);
+        fftw_destroy_plan(ifft);
+        return res;
+    }
+    else{
+        for (int a1 = 0; a1 < bondpos.size(); a1++) {
+            for (int a2 = a1; a2 < bondpos.size(); a2++) {
+                diffx = bondpos[a1][0] - bondpos[a2][0];
+                diffy = bondpos[a1][1] - bondpos[a2][1];
+                diffz = bondpos[a1][2] - bondpos[a2][2];
+                if (diffx > boxx / 2.0) { diffx -= boxx; };
+                if (diffx < -boxx / 2.0) { diffx += boxx; };
+                if (diffy > boxy / 2.0) { diffy -= boxy; };
+                if (diffy < -boxy / 2.0) { diffy += boxy; };
+                if (diffz > boxz / 2.0) { diffz -= boxz; };
+                if (diffz < -boxz / 2.0) { diffz += boxz; };
+                d = sqrt(diffx * diffx + diffy * diffy + diffz * diffz);
+                if (d <= cut && d >= histlow) {
+                    for (int tq = 0; tq < qs.size(); tq++) {
+                        q = qs[tq];
+                        Complexsum = 0;
+                        for (int mi = -q; mi < q + 1; mi++) {
+                            Qlm_a1 = tempQ[a1][tq][mi + q];
+                            Qlm_a2 = tempQ[a2][tq][mi + q];
+                            Complexsum += Qlm_a1 * conj(Qlm_a2);
+                            
+                            //rescount[tq][floor((d - histlow) / deltacut)] += 1;
+                        }
+                        res[tq][floor((d - histlow) / deltacut)] += Complexsum.real();
+                    }
+                    {
+                        Qlm_a1 = G0tempQ[a1];
+                        Qlm_a2 = G0tempQ[a2];
+                        G0temp = Qlm_a1 * conj(Qlm_a2);
+                        G0[floor((d - histlow) / deltacut)] += G0temp.real();
+                        //G0count[floor((d - histlow) / deltacut)] += 1;
+                    }
+                }
+            }
+        }
+        double r = 0;
+        for (int i = 0; i < histnum; i++) {
+            r = deltacut * (i + 0.5);
+            //G0[i] = G0[i]/ bondpos.size() / deltacut;//正常应该再比4pi.r2 但是和下面的消掉了
+            //G0[i] *= 4 * PI;
+            for (int j = 0; j < qs.size(); j++)
+            {
+                q = qs[j];
+                //res[j][i] = res[j][i]/ bondpos.size() / deltacut;
+                //res[j][i] *= 4 * PI / (2 * q + 1);
+                res[j][i] /= (2 * q + 1);
+                if (norm)
+                {
+                    res[j][i] /=  G0[i];//res 和G0 的4pi r2 彼此消掉。
+                }
+                else {
+                    res[j][i] *= 4 * PI;
+                    res[j][i] /= (4 * PI * r * r) * bondpos.size() * deltacut;
+                }
+            }
+        }
+        return res;
+    }
+
+}
+void System::calculate_w(vector <int> qs, vector <int> atomlist,bool averageon) {
+    int q;
+    int ti = 0;
+    double wig;
+    complex<double> Qlm1,Qlm2,Qlm3, Complexsum;
+    if (!averageon) {
+        for (vector<int>::iterator it = atomlist.begin(); it != atomlist.end(); it++) {
+            ti = *it;
+            for (int tq = 0; tq < qs.size(); tq++) {
+                q = qs[tq];
+                Complexsum = 0;
+                for (int m1 = -q; m1 < q + 1; m1++) {
+                    for (int m2 = m1; m2 < q + 1; m2++) {
+                        int m3 = 0 - m1 - m2;
+                        wig = WignerSymbols::wigner3j(q, q, q, m1, m2, m3);
+                        Qlm1 = atoms[ti].realq[q - 2][m1 + q] + atoms[ti].imgq[q - 2][m1 + q] * 1i;
+                        Qlm2 = atoms[ti].realq[q - 2][m2 + q] + atoms[ti].imgq[q - 2][m2 + q] * 1i;
+                        Qlm3 = atoms[ti].realq[q - 2][m3 + q] + atoms[ti].imgq[q - 2][m3 + q] * 1i;
+                        if (m2 == m1) {
+                        Complexsum += wig * Qlm1 * Qlm2 * Qlm3;
+                        }
+                        else if (m2 > m1)
+                        {
+                            Complexsum += 2* wig * Qlm1 * Qlm2 * Qlm3;
+                        }
+
+                            
+                        
+                    }
+                }
+                atoms[ti].w[q-2] = Complexsum.real();
+                atoms[ti].wnorm[q-2] = Complexsum.real() / pow(atoms[ti].q[q-2], 3) * pow(4 * PI / (2 * q + 1), 3.0 / 2.0);
+            }
+        }
+    }
+    else {
+        for (vector<int>::iterator it = atomlist.begin(); it != atomlist.end(); it++) {
+            ti = *it;
+            for (int tq = 0; tq < qs.size(); tq++) {
+                q = qs[tq];
+                Complexsum = 0;
+                for (int m1 = -q; m1 < q + 1; m1++) {
+                    for (int m2 = m1; m2 < q + 1; m2++) {
+                        int m3 = 0 - m1 - m2;
+                                wig = WignerSymbols::wigner3j(q, q, q, m1, m2, m3);
+                                Qlm1 = atoms[ti].arealq[q - 2][m1 + q] + atoms[ti].aimgq[q - 2][m1 + q] * 1i;
+                                Qlm2 = atoms[ti].arealq[q - 2][m2 + q] + atoms[ti].aimgq[q - 2][m2 + q] * 1i;
+                                Qlm3 = atoms[ti].arealq[q - 2][m3 + q] + atoms[ti].aimgq[q - 2][m3 + q] * 1i;
+                                if (m2 == m1) {
+                                    Complexsum += wig * Qlm1 * Qlm2 * Qlm3;
+                                }
+                                else if (m2 > m1)
+                                {
+                                    Complexsum += 2 * wig * Qlm1 * Qlm2 * Qlm3;
+                                }
+
+                            
+                        
+                    }
+                }
+                atoms[ti].aw[q - 2] = Complexsum.real();
+                atoms[ti].awnorm[q - 2] = Complexsum.real() / pow(atoms[ti].aq[q - 2], 3) * pow(4 * PI / (2 * q + 1), 3.0 / 2.0);
+            }
+        }
+    }
+}
+
 //calculation of any complex qval
 void System::calculate_q(vector <int> qs,vector <int> atomlist){
 

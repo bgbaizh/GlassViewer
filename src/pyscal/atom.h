@@ -141,6 +141,10 @@ class Atom{
         double realQ6[13],imgQ6[13];
         void ssij(vector<double>);
         vector<double> gsij();
+        vector<double> wnorm;//都是11个，在atom类初始化函数中初始化
+        vector<double> awnorm;
+        vector<double> w;
+        vector<double> aw;
         double q[11];
         double aq[11];
         double realq[11][25];

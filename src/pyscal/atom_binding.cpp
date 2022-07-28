@@ -180,6 +180,22 @@ py::class_<Atom>(m,"Atom", R"mydelimiter(
     //-------------------------------------------------------
     // Q parameter properties
     //-------------------------------------------------------
+    .def_readwrite("wnorm", &Atom::wnorm, R"mydelimiter(
+          *float*. Value of wnorm
+
+    )mydelimiter")
+    .def_readwrite("awnorm", &Atom::awnorm, R"mydelimiter(
+          *float*. Value of average_wnorm
+
+    )mydelimiter")
+    .def_readwrite("w", &Atom::w, R"mydelimiter(
+          *float*. Value of w
+
+    )mydelimiter")
+    .def_readwrite("aw", &Atom::aw, R"mydelimiter(
+          *float*. Value of average_w
+
+    )mydelimiter")
     .def_property("allq",&Atom::gallq,&Atom::sallq, R"mydelimiter(
         *list of floats*.
         list of all q values of the atom.

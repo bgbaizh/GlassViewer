@@ -1,5 +1,4 @@
 #include <iostream>
-#include <iostream>
 #include <exception>
 #include <math.h>
 #include <stdio.h>
@@ -15,6 +14,9 @@
 #include <pybind11/stl.h>
 #include "atom.h"
 #include <mutex> 
+#include <wignerSymbols.h>
+#include "fftw3.h"
+
 
 namespace py = pybind11;
 using namespace std;
@@ -148,6 +150,8 @@ class System{
         vector<int> rq_backup;
         void set_reqd_qs(vector<int>);
         void set_reqd_aqs(vector<int>);
+        void calculate_w(vector <int>, vector <int> atomlist,bool);
+
         void calculate_q(vector <int>,vector <int> atomlist);
         void calculate_aq(vector <int>,vector <int> atomlist);
         double dfactorial(int ,int );
@@ -162,7 +166,19 @@ class System{
         //disorder vars
         void calculate_disorder();
         void find_average_disorder();        
-
+        //---------------------------------------------------
+        // Methods for Global_Statics calculation
+        //---------------------------------------------------
+        vector<vector<double>>bondpos;
+        vector<vector<double>>bondvec;
+        vector<vector<vector<vector<double>>>> bondqlm;
+        vector<vector<vector<double>>> global_Qlm;
+        vector<double>global_Ql;
+        vector<double>global_Wl;
+        vector<double>global_Wlnorm;
+        void GlobalBOO_Bond( vector <int> atomlist);
+        void  GlobalBOO_Sum(vector <int>);
+        vector<vector<double>> GlobalBOO_CF(vector <int>qs, double cut, int histnum, double histlow, bool norm, int n1, int n2, int n3,bool ffton);
         //-----------------------------------------------------
         // Solids and Clustering methods
         //-----------------------------------------------------
