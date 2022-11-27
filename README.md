@@ -1,23 +1,15 @@
 # GlassViewer
-这是一个Pyscal的Fork 针对金属玻璃的序参量进行扩展
-金属玻璃序参量计算包
+Pyscal_Glassviewer is a FORK of Pyscal, which is modified and improved for Metal Glass data post-processing tasks by Zihao Bai, Jilin University. Calculation of some new order parameters are implemented. Parrallel analysis for MD trajectory is implemented. 
 
-Program Process：
-
-    1，读取POSCAR
-    2，分析POSCAR序参量
-    3，返回数据和图像
-
-    先形成相应模块
-    而后集成到ofdfttest package 中实现job模式
-
-Function:
-
-    1.	Pair distribution function 	    Pyscal
-    2.	Structure factor             	Undeveloped(Fourier to PDF)
-    3.	Coordination number         	Pyscal
-    4.	Chemical short-range order  	Undeveloped(Use CN)
-    5.	Bond angle distribution      	Undeveloped
-    6.	Bond orientational order    	Pyscal
-    7.	Common neighbor analysis    	Pyscal
-    8.	Voronoi tessellation        	Pyscal
+|No.|Function|Implement|Comment|
+|----|-----|----|----|
+|1|Pair distribution function|Improved|Parallel support, long-range calculation support|
+|2|Structure factor|Glassviewer|Integration method and FFT method|
+|3|Coordination number|Improved|Improvement for cell expansion style|
+|4|Chemical short-range order_Cowley|Pyscal|
+|5|Chemical short-range order_Cargill-Spaepen|Glassviewer||	
+|6|Bond angle distribution|Glassviewer|Support for Wn order parameter, bug repair for BOO components|
+|7|Bond orientational order|Improved||
+|8|Common neighbor analysis|Pyscal||
+|9|Voronoi tessellation|Pyscal||
+|10|File IO|Improved|Support for XDATCAR|
