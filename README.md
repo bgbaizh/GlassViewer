@@ -49,3 +49,7 @@ Three explicit jupyternotebook files in glassviewer-benchmark directory demonstr
 |8|Common neighbor analysis|Pyscal||
 |9|Voronoi tessellation|Pyscal||
 |10|File IO|Improved in Glassviewer|Support for XDATCAR|
+
+## Citing
+
+A publication for Glassviewer is being prepared. If you are going to use GlassViewer in your work, it would be great if you let me know.
