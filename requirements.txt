@@ -1,5 +1,5 @@
 matplotlib~=3.5.1
-
+seaborn
 pyscal~=2.10.15
 numpy~=1.21.5
 ase~=3.22.1

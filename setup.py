@@ -6,10 +6,10 @@ with open('README.rst') as readme_file:
     readme = readme_file.read()
 
 setup(
-    name='pyscal',
-    version='2.10.15',
+    name='glassviewer',
+    version='1.0',
     author='Sarath Menon',
-    author_email='sarath.menon@pyscal.org',
+    author_email='bggmail.com',
     description='Python library written in C++ for calculation of local atomic structural environment',
     long_description=readme,
     # tell setuptools to look for any packages under 'src'
@@ -18,17 +18,17 @@ setup(
     # and nowhere else
     package_dir={'':'src'},
     # add an extension module named 'python_cpp_example' to the package
-    headers=["src/pyscal/atom.h", "src/pyscal/system.h", "lib/voro++/voro++.hh","lib/wignerSymbols/include/wignerSymbols.h",'lib/fftw3/fftw3.h'],
+    headers=["src/glassviewer/atom.h", "src/glassviewer/system.h", "lib/voro++/voro++.hh","lib/wignerSymbols/include/wignerSymbols.h",'lib/fftw3/fftw3.h'],
     ext_modules=[
         Pybind11Extension(
-            "pyscal.catom",
-            ["src/pyscal/atom.cpp", "src/pyscal/atom_binding.cpp"],
+            "glassviewer.catom",
+            ["src/glassviewer/atom.cpp", "src/glassviewer/atom_binding.cpp"],
             language='c++',
             include_dirs=['lib/voro++']
         ),
         Pybind11Extension(
-            "pyscal.csystem",
-            ["src/pyscal/system.cpp", "src/pyscal/system_binding.cpp", "src/pyscal/atom.cpp", "lib/voro++/voro++.cc","lib/wignerSymbols/src/wignerSymbols-cpp.cpp"],
+            "glassviewer.csystem",
+            ["src/glassviewer/system.cpp", "src/glassviewer/system_binding.cpp", "src/glassviewer/atom.cpp", "lib/voro++/voro++.cc","lib/wignerSymbols/src/wignerSymbols-cpp.cpp"],
             language='c++',
             include_dirs=['lib/voro++','lib/wignerSymbols/include','lib/fftw3'],
             library_dirs=['lib/fftw3'],
@@ -38,11 +38,11 @@ setup(
     # add custom build_ext command
     cmdclass={"build_ext": build_ext},
     zip_safe=False,
-    download_url = 'https://anaconda.org/conda-forge/pyscal',
-    url = 'https://pyscal.org',
+    download_url = 'https://github.com/bgbaizh/GlassViewer',
+    url = 'https://github.com/bgbaizh/GlassViewer',
     install_requires=['numpy', 'ase', 'plotly', 'ipywidgets'],
     classifiers=[
         'Programming Language :: Python :: 3'
     ],
-    package_data={'pyscal':['libfftw3-3.dll']}
+    package_data={'glassviewer':['libfftw3-3.dll']}
 )

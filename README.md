@@ -1,31 +1,51 @@
 # GlassViewer
-Pyscal_Glassviewer is a FORK of Pyscal, which is modified and improved for Metal Glass data post-processing tasks by Zihao Bai, Jilin University. Calculation of some new order parameters are implemented. Parrallel analysis for MD trajectory is implemented. 
+GlassViewer is a FORK of Pyscal, which offers automatic parallel order parameter calculation for multiple MD trajectories. Meanwhile, it is specially modified and improved for Nucleation Problem and Metal Glass Systems. 
+
+GlassViewer is designed by Zihao Bai, Jilin University.  
+## Overview
+
+Using GlassViewer you can get average order parameters of a whole MD trajectory very effiently. This helps with getting reliable and clear analysis figures from MD of small systems. Meanwhile, it can calculate time evolution of some important parameters like Cluster Size and Bond Order Orientation. Apart from that, you can use GlassViewer to compare multiple MD trajectories easily and directly.
+
+For instance, you can generate beatiful analysis work as follows in "one command".
+![](./img/wn6.png)
+![](./img/aq4aq6.png)
+![](./img/pdf.png)
+
+Could you imagine that the last smooth figures are generated from only 108 atoms. This result is calculated from 600x4 MD frames within only 1 minite using GlassViewer. There are more pictures provided in our documents. Please see DOCUMENT section below.
+
+GlassViewer also provide special support for Statistics of Nucleation Problems like First Pass Time Statistics.   
+
+## Features:
+1. Support for **automatic parallel analysis** for multiple MD trajectories.
+2. Support for **automatic visualization** for all order parameters.
+3. Support for **more important order parameters**. 
+4. Support for **First Pass Time** and **ClusterSize vs Time** calculation.
+5. Support for **BOO vs Time** and **Joint BOO Distribution** calculation.
+## Installation
+It is very easy to install this package, please execute the following command in the root directory of Glassviewer.
+
+    pip install . 
+## Documents
+Three explicit jupyternotebook files in glassviewer-benchmark directory demonstrate the usage and features of GlassViewer vividly.
+|No.|Name|Comment|
+|----|-----|----|
+|1|POSCAR.ipynb|Present calculation for all order parameters for a single POSCAR|
+|1|Nucleation.ipynb|Present use of GlassViewer in Nucleation Problem|
+|1|LiMgAlloy.ipynb|Present use of GlassViewer in Multi-component Systems|
+
+
+
+
 ## Support for New Order Parameters 
-|No.|Function|Implement|Comment|
+|No.|Function|Implement|Features in Glassviewer|
 |----|-----|----|----|
-|1|Pair distribution function|Improved|Parallel support, long-range calculation support|
-|2|Structure factor|Glassviewer|Integration method and FFT method|
-|3|Coordination number|Improved|Improvement for cell expansion style|
+|1|Pair distribution function|Improved in Glassviewer|Parallel support, long-range calculation support, partial PDF support|
+|2|Structure factor|New in Glassviewer|Integration method and FFT method|
+|3|Coordination number|Pyscal|Modified cell expansion style|
 |4|Chemical short-range order_Cowley|Pyscal|
-|5|Chemical short-range order_Cargill-Spaepen|Glassviewer||	
-|6|Bond angle distribution|Glassviewer|Support for Wn order parameter, bug repair for BOO components|
-|7|Bond orientational order|Improved||
+|5|Chemical short-range order_Cargill-Spaepen|New in Glassviewer||	
+|6|Bond angle distribution|New in Glassviewer|Support for Wn order parameter|
+|7|Bond orientational order|Improved in Glassviewer||
 |8|Common neighbor analysis|Pyscal||
 |9|Voronoi tessellation|Pyscal||
-|10|File IO|Improved|Support for XDATCAR|
-
-### How to use?
-A jupyternotebook file (./glassviewer/glassviewer.ipynb) with detailed comments clearly demonstrates calculation for all the above order parameters.
-
-## Support for Parallel Analysis for Molecular Dynamics Trajectories
-A jupyternotebook file (./glassviewer/MDanalysis.ipynb) with detailed comments clearly demonstrates parallel analysis for MD trajectories.
-## Support for Direct Visualization of Order parameters
-
-Using Glassviewer, you can conviniently visualize BOO distributions as follows.
-![](./img/wn6.png)
-BOO vs Time distribution
-![](./img/aq4aq6.png)
-Joint BOO distribution
-
-A jupyternotebook file (./glassviewer/Visualize.ipynb) with detailed comments clearly demonstrates parallel analysis for MD trajectories.
-
+|10|File IO|Improved in Glassviewer|Support for XDATCAR|

@@ -11,3 +11,7 @@ docs/html/*
 docs/doctrees/*
 docs/source/examples
 .ipynb_check*
+glassviewer-benchmark/*dir/*
+glassviewer-benchmark/AnaMDAnalysis
+glassviewer-benchmark/Anarunlog.log
+glassviewer-benchmark/filesname
