@@ -13,7 +13,7 @@ For instance, you can generate beatiful analysis work as follows in "one command
 
 Could you imagine that the last smooth figures are generated from only 108 atoms. This result is calculated from 600x4 MD frames within only 1 minite using GlassViewer. There are more pictures provided in our documents. Please see DOCUMENT section below.
 
-GlassViewer also provide special support for Statistics of Nucleation Problems like First Pass Time Statistics.   
+GlassViewer also provide special support for Statistics of Nucleation Problems like First Pass Time Statistics. Calculation for some important order parameters are also provided, such as Structure Factors, Bond angle distribution, Cargill-Spaepen Chemical short-range order, and BOO-Wn quantities.
 
 ## Features
 1. Support for **automatic parallel analysis** for multiple MD trajectories.
