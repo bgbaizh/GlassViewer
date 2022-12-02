@@ -15,7 +15,7 @@ Could you imagine that the last smooth figures are generated from only 108 atoms
 
 GlassViewer also provide special support for Statistics of Nucleation Problems like First Pass Time Statistics.   
 
-## Features:
+## Features
 1. Support for **automatic parallel analysis** for multiple MD trajectories.
 2. Support for **automatic visualization** for all order parameters.
 3. Support for **more important order parameters**. 
