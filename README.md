@@ -2,7 +2,7 @@
 
 GlassViewer is a FORK of Pyscal, which provides automatic parallel order parameter calculation for multiple MD trajectories. Meanwhile, it is specially modified and improved for Nucleation Problems and Metal Glass Systems. 
 
-GlassViewer is designed by Zihao Bai, Jilin University.  
+GlassViewer is designed using Python and C++ by Zihao Bai, Jilin University.  
 ## Overview
 
 Using GlassViewer you can get average order parameters of a whole MD trajectory very efficiently. This helps with getting reliable and clear analysis figures from MD trajectories of small systems. Meanwhile, it can calculate the time evolution of some important parameters like Cluster Size and Bond Order Orientation. Apart from that, you can use GlassViewer to compare multiple MD trajectories easily and directly.
