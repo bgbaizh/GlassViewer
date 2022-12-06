@@ -24,6 +24,7 @@ GlassViewer also provides special support for Statistics of Nucleation Problems 
 5. Support for **BOO vs Time** and **Joint BOO Distribution** calculation.
 ## Installation
 It is very easy to install this package, please execute the following commands
+
     git clone https://github.com/bgbaizh/GlassViewer.git
     cd GlassViewer
     pip install . 
